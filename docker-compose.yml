@@ -1,0 +1,17 @@
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: genesis-startup-studio:latest
+    container_name: genesis-web
+    restart: unless-stopped
+    ports:
+      # host:container — override via env: GENESIS_PORT=8027 docker compose up -d
+      - "${GENESIS_PORT:-8026}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

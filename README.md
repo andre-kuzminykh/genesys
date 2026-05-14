@@ -64,3 +64,45 @@ The test suite is the spec contract:
 | TEST-GEN-090..091 | CLAUDE.md mode tracker |
 
 Run `pnpm test --reporter=verbose` to see them grouped by feature.
+
+## Docker / Deploy
+
+Local container:
+
+```bash
+GENESIS_PORT=8026 docker compose up -d --build
+# open http://localhost:8026
+docker compose logs -f
+docker compose down
+```
+
+Deploy to GCE VM via `gcloud`:
+
+```bash
+# defaults: project=i-crossbar-433120-v3 zone=europe-west1-b instance=human-1 port=8026
+./scripts/deploy-gcp.sh
+
+# or override:
+PROJECT=i-crossbar-433120-v3 ZONE=europe-west1-b \
+  INSTANCE=human-1 PORT=8027 ./scripts/deploy-gcp.sh
+```
+
+The script packs the source (skipping `node_modules`/`dist`/`.git`), `scp`s it
+to `/opt/genesis` on the VM, then runs `docker compose up -d --build`. The VM
+must have Docker installed. Open the firewall once:
+
+```bash
+gcloud compute firewall-rules create allow-genesis-8026 \
+  --project=i-crossbar-433120-v3 \
+  --direction=INGRESS --action=ALLOW --rules=tcp:8026 \
+  --source-ranges=0.0.0.0/0
+```
+
+External IP:
+
+```bash
+gcloud compute instances describe human-1 \
+  --project=i-crossbar-433120-v3 --zone=europe-west1-b \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
+```
+
