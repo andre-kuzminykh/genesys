@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    background:
+      radial-gradient(800px 600px at 0% -10%, rgba(249,242,107,0.10), transparent 60%),
+      radial-gradient(900px 700px at 100% 0%, rgba(122,182,255,0.10), transparent 60%),
+      #05060A;
+    color: #FFFFFF;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: rgba(249, 242, 107, 0.4);
+    color: #05060A;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+}
+
+@layer components {
+  .bento {
+    @apply relative rounded-3xl border border-white/[0.06] bg-ink-900/70 backdrop-blur-xl shadow-bento;
+  }
+  .bento-inset {
+    @apply rounded-2xl border border-white/[0.06] bg-ink-800/70;
+  }
+  .glow-yellow { box-shadow: 0 0 0 1px rgba(249,242,107,0.35), 0 0 30px rgba(249,242,107,0.20); }
+  .glow-sky    { box-shadow: 0 0 0 1px rgba(122,182,255,0.35), 0 0 30px rgba(122,182,255,0.20); }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+  }
+
+  .neon-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 font-medium text-ink-950 transition
+      bg-neon-500 hover:bg-neon-400 active:scale-[0.98];
+    box-shadow: 0 0 0 1px rgba(249,242,107,0.5), 0 10px 30px -10px rgba(249,242,107,0.6);
+  }
+  .ghost-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 font-medium text-white/90 transition
+      border border-white/[0.08] hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04];
+  }
+  .sky-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 font-medium text-ink-950 transition
+      bg-sky-400 hover:bg-sky-500 active:scale-[0.98];
+    box-shadow: 0 0 0 1px rgba(122,182,255,0.5), 0 10px 30px -10px rgba(122,182,255,0.6);
+  }
+  .danger-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 font-medium text-white transition
+      bg-signal-red/80 hover:bg-signal-red;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
+  .chip-yellow { @apply text-neon-400 border-neon-500/40 bg-neon-500/10; }
+  .chip-sky    { @apply text-sky-400 border-sky-500/40 bg-sky-500/10; }
+  .chip-green  { @apply text-signal-green border-signal-green/40 bg-signal-green/10; }
+  .chip-red    { @apply text-signal-red border-signal-red/40 bg-signal-red/10; }
+  .chip-amber  { @apply text-signal-amber border-signal-amber/40 bg-signal-amber/10; }
+  .chip-violet { @apply text-signal-violet border-signal-violet/40 bg-signal-violet/10; }
+  .chip-neutral{ @apply text-white/70 border-white/10 bg-white/[0.04]; }
+
+  .display-mono { @apply font-mono text-[11px] tracking-widest text-white/40 uppercase; }
+  .label { @apply text-xs uppercase tracking-[0.18em] text-white/40; }
+}
