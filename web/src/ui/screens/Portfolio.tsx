@@ -29,7 +29,7 @@ export function Portfolio() {
         <BentoHeader
           eyebrow="investor view"
           title="My Portfolio"
-          right={<Chip tone="sky">batch GENESIS-001</Chip>}
+          right={<Chip tone="sky">batch GENESYS-001</Chip>}
         />
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="Credits left" value={remaining} tone="text-neon-400" />

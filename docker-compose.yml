@@ -3,8 +3,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    image: genesis-startup-studio:latest
-    container_name: genesis-web
+    image: genesys-startup-studio:latest
+    container_name: genesys-web
     restart: unless-stopped
     ports:
       # host:container — override via env: GENESIS_PORT=8027 docker compose up -d

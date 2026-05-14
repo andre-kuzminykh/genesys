@@ -62,7 +62,7 @@ export function Repo() {
       <Bento>
         <BentoHeader
           eyebrow="file plan"
-          title="What Genesis writes back to your repo"
+          title="What Genesys writes back to your repo"
           right={<Chip tone="sky">read/write mock · V1 uses GitHub API</Chip>}
         />
         <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">

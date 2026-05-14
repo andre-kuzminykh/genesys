@@ -73,7 +73,7 @@ export function seedState(): AppState {
 
   const batch = {
     id: 'B1',
-    name: 'GENESIS-001 · May Cohort',
+    name: 'GENESYS-001 · May Cohort',
     allowlist: ['admin', 'alice', 'bob', 'carol', 'dmitry'],
     creditsPerInvestor: 1000,
     selfInvestPolicy: 'FORBIDDEN' as const,

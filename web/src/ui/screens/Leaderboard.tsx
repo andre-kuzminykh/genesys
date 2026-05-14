@@ -15,7 +15,7 @@ export function Leaderboard() {
         <BentoHeader
           eyebrow="demo-day · live"
           title="Leaderboard"
-          right={<Chip tone="yellow"><TrophyIcon size={12} /> batch GENESIS-001</Chip>}
+          right={<Chip tone="yellow"><TrophyIcon size={12} /> batch GENESYS-001</Chip>}
         />
         <p className="mt-2 max-w-2xl text-sm text-white/60">
           Sorted by Readiness Score (desc). Ties are broken by total credits invested.

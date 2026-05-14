@@ -1,7 +1,7 @@
 import type { AppState } from '@/domain/types';
 import { seedState } from './seed';
 
-const KEY = 'genesis:v0.1';
+const KEY = 'genesys:v0.1';
 
 export function loadState(): AppState {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return seedState();

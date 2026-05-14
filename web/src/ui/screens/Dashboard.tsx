@@ -36,7 +36,7 @@ export function Dashboard() {
               <div className="font-display text-lg">Start your first startup</div>
             </div>
             <p className="mt-2 max-w-2xl text-sm text-white/60">
-              Genesis will interview you with an AI Analyst, generate a versioned spec, render a
+              Genesys will interview you with an AI Analyst, generate a versioned spec, render a
               Mermaid architecture, and let peers invest credits in your idea.
             </p>
             <Link to="/app/new" className="neon-button mt-5">

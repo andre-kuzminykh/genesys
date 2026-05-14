@@ -58,7 +58,7 @@ export function AppLayout() {
             <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-sky-400 animate-pulseGlow" />
           </div>
           <div>
-            <div className="font-display text-sm font-semibold leading-tight">Genesis</div>
+            <div className="font-display text-sm font-semibold leading-tight">Genesys</div>
             <div className="display-mono">startup&nbsp;studio</div>
           </div>
         </div>

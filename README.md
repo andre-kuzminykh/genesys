@@ -1,4 +1,4 @@
-# Genesis Startup Studio
+# Genesys Startup Studio
 
 Spec-first startup operating system for the AI-native economy.
 

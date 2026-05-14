@@ -24,7 +24,7 @@ export function Login() {
     }
     const r = login(value);
     if (!r.ok) {
-      setError('This GitHub handle is not on the GENESIS-001 allowlist. Ask the admin to add it.');
+      setError('This GitHub handle is not on the GENESYS-001 allowlist. Ask the admin to add it.');
       nav('/denied', { state: { handle: value } });
       return;
     }
@@ -38,14 +38,14 @@ export function Login() {
 
       <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-6 py-10 md:grid-cols-2">
         <div>
-          <Chip tone="yellow" icon={<RocketIcon size={12} />}>GENESIS-001 · May Cohort</Chip>
+          <Chip tone="yellow" icon={<RocketIcon size={12} />}>GENESYS-001 · May Cohort</Chip>
           <h1 className="mt-5 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
             One door in.
             <br />
             <span className="text-neon-400">GitHub only.</span>
           </h1>
           <p className="mt-5 max-w-md text-white/60">
-            Genesis Studio uses GitHub as the single source of identity. For this demo cohort,
+            Genesys Studio uses GitHub as the single source of identity. For this demo cohort,
             only allowlisted handles can enter. Spec, repo, simulation and leaderboard all live
             behind one trust boundary.
           </p>
@@ -56,7 +56,7 @@ export function Login() {
                 <ShieldIcon className="text-sky-400" />
                 <div className="font-display text-base">Allowlist preview</div>
               </div>
-              <Chip tone="sky">batch: GENESIS-001</Chip>
+              <Chip tone="sky">batch: GENESYS-001</Chip>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {suggested.map((h) => (
