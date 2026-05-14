@@ -9,18 +9,18 @@ function boot() {
     theme: 'base',
     fontFamily: 'JetBrains Mono, ui-monospace, monospace',
     themeVariables: {
-      background: '#0A0B12',
-      primaryColor: '#10121C',
+      background: '#0B0D14',
+      primaryColor: '#1A1D27',
       primaryTextColor: '#FFFFFF',
-      primaryBorderColor: '#F9F26B',
-      lineColor: '#7AB6FF',
-      secondaryColor: '#171A26',
-      tertiaryColor: '#171A26',
+      primaryBorderColor: '#D5FF00',
+      lineColor: '#82A0FF',
+      secondaryColor: '#2A2E3D',
+      tertiaryColor: '#2A2E3D',
       tertiaryTextColor: '#FFFFFF',
-      nodeBorder: '#F9F26B',
-      clusterBkg: '#10121C',
-      clusterBorder: '#7AB6FF',
-      mainBkg: '#10121C',
+      nodeBorder: '#D5FF00',
+      clusterBkg: '#1A1D27',
+      clusterBorder: '#82A0FF',
+      mainBkg: '#1A1D27',
       titleColor: '#FFFFFF',
     },
     securityLevel: 'loose',
@@ -64,7 +64,7 @@ export function Mermaid({ chart, id }: { chart: string; id?: string }) {
   return (
     <div
       ref={elRef}
-      className="overflow-auto rounded-2xl bg-ink-800/60 p-4 [&_svg]:mx-auto [&_svg]:h-auto"
+      className="overflow-auto rounded-2xl bg-base p-4 [&_svg]:mx-auto [&_svg]:h-auto"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

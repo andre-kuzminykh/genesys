@@ -5,54 +5,62 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // semantic aliases that match the UI kit
+        base: '#0B0D14',
+        surface: '#1A1D27',
+        surfaceLight: '#2A2E3D',
+        textsec: '#A0A5B5',
+        softblue: '#82A0FF',
+        danger: '#FF4B4B',
+
+        // shaded scales used across the app
         ink: {
-          950: '#05060A',
-          900: '#0A0B12',
-          800: '#10121C',
-          700: '#171A26',
-          600: '#1F2333',
-          500: '#2A2F44',
+          950: '#0B0D14', // base
+          900: '#1A1D27', // surface
+          800: '#2A2E3D', // surfaceLight
+          700: '#363B4D',
+          600: '#444A5E',
+          500: '#5A6075',
         },
         neon: {
-          // primary — neon yellow
-          400: '#FFF06B',
-          500: '#F9F26B',
-          600: '#EDE34B',
-          glow: 'rgba(249,242,107,0.35)',
+          400: '#E3FF33', // hover
+          500: '#D5FF00', // primary
+          600: '#B9E000', // active
+          glow: 'rgba(213,255,0,0.35)',
         },
         sky: {
-          // secondary — soft blue
-          400: '#7AB6FF',
-          500: '#4F95F4',
-          600: '#2F77D8',
-          glow: 'rgba(122,182,255,0.30)',
+          400: '#82A0FF',
+          500: '#6A8DFF',
+          600: '#4F75F0',
+          glow: 'rgba(130,160,255,0.30)',
         },
         signal: {
           green: '#5EE6A8',
-          red: '#FF6B7A',
+          red: '#FF4B4B',
           amber: '#FFB05A',
           violet: '#B698FF',
         },
       },
       fontFamily: {
-        display: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
         bento: '0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.7)',
-        neon: '0 0 0 1px rgba(249,242,107,0.35), 0 0 30px rgba(249,242,107,0.18)',
-        sky: '0 0 0 1px rgba(122,182,255,0.30), 0 0 30px rgba(122,182,255,0.16)',
+        neon: '0 0 20px rgba(213,255,0,0.2)',
+        'neon-strong': '0 0 30px rgba(213,255,0,0.4)',
+        sky: '0 0 20px rgba(130,160,255,0.2)',
       },
       borderRadius: {
         '2xl': '1.25rem',
-        '3xl': '1.75rem',
+        '3xl': '2rem', // 32px to match the kit's bento radius
       },
       backgroundImage: {
         'grid-faint':
           'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
         'radial-neon':
-          'radial-gradient(800px circle at 10% -10%, rgba(249,242,107,0.10), transparent 50%), radial-gradient(700px circle at 90% 10%, rgba(122,182,255,0.10), transparent 50%)',
+          'radial-gradient(800px circle at 10% -10%, rgba(213,255,0,0.10), transparent 50%), radial-gradient(700px circle at 90% 10%, rgba(130,160,255,0.10), transparent 50%)',
       },
       backgroundSize: {
         'grid-32': '32px 32px',
@@ -66,10 +74,16 @@ const config: Config = {
           '0%,100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-3px)' },
         },
+        upvotePop: {
+          '0%': { transform: 'scale(1)' },
+          '40%': { transform: 'scale(1.18)' },
+          '100%': { transform: 'scale(1)' },
+        },
       },
       animation: {
         pulseGlow: 'pulseGlow 2.4s ease-in-out infinite',
         floaty: 'floaty 4s ease-in-out infinite',
+        upvotePop: 'upvotePop 350ms ease-out',
       },
     },
   },
