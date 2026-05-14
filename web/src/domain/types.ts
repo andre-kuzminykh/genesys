@@ -120,6 +120,7 @@ export interface Startup {
   pitch: string; // one-line
   category: string;
   description?: string;
+  landingUrl?: string;
   repo?: string; // owner/repo
   published: boolean;
   createdAt: number;
