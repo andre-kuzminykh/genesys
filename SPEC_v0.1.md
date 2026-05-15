@@ -981,3 +981,44 @@ This section captures requirements driven by user feedback on the public Landing
 | FEAT-GEN-023 | STORY-GEN-023 | UC-GEN-023 | FR-GEN-141..143 | TEST-GEN-141..143 |
 | FEAT-GEN-024 | STORY-GEN-024 | UC-GEN-024 | FR-GEN-140 | TEST-GEN-140 |
 | FEAT-GEN-025 | STORY-GEN-025 | UC-GEN-025 | FR-GEN-150 | TEST-GEN-150 |
+
+---
+
+## 10. Landing visual pass v0.4 (added 2026-05-15)
+
+User feedback after the v0.3 release: cards too small/sideways, descriptions
+too short, upvotes too prominent on the featured slot, prev/next arrows
+"ugly", search too narrow vs. logo, light theme had heavy dark shadows
+under cards. Also: real GitHub handle should be on the allowlist.
+
+### 10.1 New features
+
+| ID | Feature | Priority |
+|---|---|---|
+| FEAT-GEN-026 | Image-based wordmark with CSS fallback (Wordmark loads /wordmark.png; if 404 → falls back to Outfit 900 lowercase) | Must |
+| FEAT-GEN-027 | Vertical product-card layout: cover-on-top + content-below (replaces horizontal cover-on-left list cards) | Must |
+| FEAT-GEN-028 | Featured carousel card has no in-card upvote (only list cards expose the upvote action) | Must |
+| FEAT-GEN-029 | Description visible on list cards (line-clamp-4, ≥4 lines) | Must |
+| FEAT-GEN-030 | Theme-aware bento drop shadow (heavy dark shadow only in dark theme) | Must |
+| FEAT-GEN-031 | Wider search box in the header (≥ 360px) without shrinking the logo (size `xl`) | Must |
+| FEAT-GEN-032 | Carousel prev/next as pill icon-buttons, centered above the slide, rotated arrow for prev | Must |
+| FEAT-GEN-033 | Cohort allowlist updated to include `andre-kuzminykh` (the real user) | Must |
+| FEAT-GEN-034 | "GENESYS-001 · May Cohort" chip removed from the Login left column | Should |
+
+### 10.2 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-160 | Wordmark MUST attempt to load /wordmark.png first; on error, fall back to CSS-rendered Outfit 900 text. | TEST-GEN-160 |
+| FR-GEN-161 | List cards MUST render: cover (top), title (h3), hashtag row, description (≥ 4 lines visible), action row (upvote + open + visit). | TEST-GEN-161 |
+| FR-GEN-162 | Featured carousel card MUST NOT render an upvote control. | TEST-GEN-162 |
+| FR-GEN-163 | The allowlist MUST contain `andre-kuzminykh`. | TEST-GEN-163 |
+
+### 10.3 Updated traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| FEAT-GEN-026 | — | FR-GEN-160 | TEST-GEN-160 |
+| FEAT-GEN-027/029 | — | FR-GEN-161 | TEST-GEN-161 |
+| FEAT-GEN-028 | — | FR-GEN-162 | TEST-GEN-162 |
+| FEAT-GEN-033 | — | FR-GEN-163 | TEST-GEN-163 |

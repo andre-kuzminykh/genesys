@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZES: Record<Size, { font: number; gap: number; cursorW: number; cursorH: number; cursorMb: number }> = {
@@ -8,35 +10,56 @@ const SIZES: Record<Size, { font: number; gap: number; cursorW: number; cursorH:
 };
 
 /**
- * Brand wordmark — neon "_" cursor + soft-blue lowercase "genesys".
- * The cursor blinks like a terminal prompt.
+ * Brand wordmark.
+ *
+ * Prefer the image at /wordmark.png (drop your file there).
+ * If it 404s, falls back to a CSS-rendered Outfit Black 900 word.
  */
 export function Wordmark({
   size = 'md',
   className = '',
   blink = true,
+  withCursor = true,
 }: {
   size?: Size;
   className?: string;
   blink?: boolean;
+  withCursor?: boolean;
 }) {
   const s = SIZES[size];
+  const [imgOk, setImgOk] = useState(true);
+  const targetHeight = Math.round(s.font * 1.15);
+
+  if (imgOk) {
+    return (
+      <img
+        src="/wordmark.png"
+        alt="Genesys"
+        onError={() => setImgOk(false)}
+        style={{ height: targetHeight, width: 'auto', display: 'block' }}
+        className={className}
+      />
+    );
+  }
+
   return (
     <div
       className={`inline-flex items-end font-brand lowercase leading-none ${className}`}
       style={{ fontSize: s.font, gap: s.gap }}
       aria-label="Genesys"
     >
-      <span
-        className={`block rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
-        style={{
-          width: s.cursorW,
-          height: s.cursorH,
-          marginBottom: s.cursorMb,
-          boxShadow: '0 0 16px rgba(127,255,0,0.55)',
-        }}
-        aria-hidden
-      />
+      {withCursor ? (
+        <span
+          className={`block rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
+          style={{
+            width: s.cursorW,
+            height: s.cursorH,
+            marginBottom: s.cursorMb,
+            boxShadow: '0 0 16px rgba(127,255,0,0.55)',
+          }}
+          aria-hidden
+        />
+      ) : null}
       <span
         className="text-softblue"
         style={{ fontWeight: 900, letterSpacing: '-0.05em' }}

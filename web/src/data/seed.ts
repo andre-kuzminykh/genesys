@@ -80,7 +80,7 @@ export function seedState(): AppState {
   const batch = {
     id: 'B1',
     name: 'GENESYS-001 · May Cohort',
-    allowlist: ['admin', 'alice', 'bob', 'carol', 'dmitry', 'eva', 'frank', 'grace', 'henry', 'ivy', 'jack'],
+    allowlist: ['andre-kuzminykh', 'admin', 'alice', 'bob', 'carol', 'dmitry', 'eva', 'frank', 'grace', 'henry', 'ivy', 'jack'],
     creditsPerInvestor: 1000,
     selfInvestPolicy: 'FORBIDDEN' as const,
     weights: DEFAULT_WEIGHTS,

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon } from '../design/Icon';
+import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon } from '../design/Icon';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
@@ -38,6 +38,7 @@ function saveUpvotes(v: Record<string, number>) {
   if (typeof localStorage === 'undefined') return;
   try { localStorage.setItem(UPVOTE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
 }
+
 function UpArrow({ size = 16, className = '' }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -46,7 +47,39 @@ function UpArrow({ size = 16, className = '' }: { size?: number; className?: str
   );
 }
 
-// ---------- screenshots ----------
+function SearchIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="text-textsec">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
+    >
+      {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+    </button>
+  );
+}
+
+// Slim arrow inside the "Visit landing" / "Read more" CTA.
+function ArrowRight16() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+// ---------- screenshots (used in the detail dialog) ----------
 
 function ScreenshotMock({ from, to, variant }: { from: string; to: string; variant: 0 | 1 | 2 | 3 }) {
   const w = '#FFFFFF';
@@ -100,16 +133,96 @@ function ScreenshotMock({ from, to, variant }: { from: string; to: string; varia
   );
 }
 
-// ---------- carousel ----------
+// ---------- shared visual atoms ----------
+
+function CoverArea({ name, height, badge }: { name: string; height: number; badge?: React.ReactNode }) {
+  const cover = coverFor(name);
+  return (
+    <div
+      className="relative w-full overflow-hidden"
+      style={{ height, background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+    >
+      <div
+        className="absolute -bottom-10 -left-4 select-none font-display font-extrabold leading-none text-ink/25"
+        style={{ fontSize: Math.round(height * 0.95) }}
+      >
+        {name.slice(0, 1)}
+      </div>
+      {badge ? <div className="absolute top-4 left-4 z-10">{badge}</div> : null}
+    </div>
+  );
+}
+
+function HashChips({ tags, onClick, limit = 6, dense = false }: { tags: string[]; onClick?: (t: string) => void; limit?: number; dense?: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tags.slice(0, limit).map((t) => (
+        <button
+          key={t}
+          onClick={(e) => { e.stopPropagation(); onClick?.(t); }}
+          className={`rounded-full border border-surfaceLight bg-base ${dense ? 'px-2 py-0.5' : 'px-2.5 py-1'} text-[10px] font-bold uppercase tracking-wider text-textsec transition hover:text-neon-500 hover:border-neon-500/40`}
+        >
+          #{t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------- featured card (big, no upvote inside) ----------
+
+function FeaturedCard({
+  startup, score, onOpen, onTagClick,
+}: {
+  startup: Startup;
+  score: Score;
+  onOpen: () => void;
+  onTagClick: (t: string) => void;
+}) {
+  return (
+    <article className="bento overflow-hidden">
+      <button onClick={onOpen} className="block w-full text-left" aria-label={`Open ${startup.name}`}>
+        <CoverArea
+          name={startup.name}
+          height={340}
+          badge={
+            <span className="rounded-full bg-base/85 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30 backdrop-blur">
+              <SparkleIcon size={10} className="inline mr-1" /> Featured
+            </span>
+          }
+        />
+      </button>
+
+      <div className="p-7">
+        <h2 className="font-display text-3xl font-extrabold leading-tight">{startup.name}</h2>
+        <div className="mt-3"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} /></div>
+        <p className="mt-4 text-base text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-surfaceLight pt-5">
+          <div className="display-mono">readiness {Math.round(score.readiness)}</div>
+          <div className="flex items-center gap-2">
+            <button onClick={onOpen} className="ghost-button">
+              Open <ArrowRight16 />
+            </button>
+            {startup.landingUrl ? (
+              <a href={startup.landingUrl} target="_blank" rel="noreferrer" className="neon-button">
+                Visit landing <ArrowRight16 />
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ---------- carousel of featured cards ----------
 
 function FeaturedCarousel({
-  items, upvotes, baseline, popping, onUpvote, onOpen,
+  items, onTagClick, onOpen,
 }: {
   items: { startup: Startup; score: Score }[];
-  upvotes: Record<string, number>;
-  baseline: Record<string, number>;
-  popping: string | null;
-  onUpvote: (id: string) => void;
+  onTagClick: (t: string) => void;
   onOpen: (id: string) => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -118,26 +231,29 @@ function FeaturedCarousel({
 
   useEffect(() => {
     if (paused || total <= 1) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % total), 5000);
+    const t = setInterval(() => setIndex((i) => (i + 1) % total), 6000);
     return () => clearInterval(t);
   }, [paused, total]);
 
   if (total === 0) return null;
   const current = items[index]!;
-  const cover = coverFor(current.startup.id);
-  const upvoteCount = (upvotes[current.startup.id] ?? 0) + (baseline[current.startup.id] ?? 0);
-  const isPopping = popping === current.startup.id;
 
   return (
     <section
-      className="mx-auto mt-6 max-w-6xl px-4"
+      className="mx-auto mt-6 max-w-5xl px-6"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* OUTSIDE-frame controls: [prev] | slide | [next]. The slide keeps its rounded border. */}
-      <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
-        <div /> {/* spacer so dots align with the slide column */}
-        <div className="flex items-center justify-center gap-1.5 pb-3">
+      <div className="flex items-center justify-center gap-3 pb-3">
+        <button
+          onClick={() => setIndex((i) => (i - 1 + total) % total)}
+          aria-label="Previous"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
+        >
+          <span className="block rotate-180"><ArrowRight16 /></span>
+        </button>
+
+        <div className="flex items-center gap-1.5">
           {items.map((_, i) => (
             <button
               key={i}
@@ -147,84 +263,89 @@ function FeaturedCarousel({
             />
           ))}
         </div>
-        <div />
-      </div>
-
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <button
-          onClick={() => setIndex((i) => (i - 1 + total) % total)}
-          aria-label="Previous"
-          className="text-textsec transition hover:text-neon-500"
-        >
-          <ChevronLeftIcon size={28} />
-        </button>
-
-        <div className="relative">
-          {/* upvote — overlaid at the very top-right, just arrow + number */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpvote(current.startup.id); }}
-            aria-label="Upvote"
-            className={`absolute top-4 right-4 z-10 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${isPopping ? 'animate-upvotePop' : ''}`}
-          >
-            <UpArrow size={22} className="text-neon-500" />
-            <span className="font-display text-2xl font-extrabold leading-none">{upvoteCount}</span>
-          </button>
-
-          <button
-            onClick={() => onOpen(current.startup.id)}
-            className="relative block w-full overflow-hidden rounded-[32px] border border-surfaceLight text-left"
-            style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
-          >
-            <div className="relative h-[300px] sm:h-[340px]">
-              <div className="absolute -left-6 -bottom-10 select-none font-display text-[280px] font-extrabold leading-none text-ink/30">
-                {current.startup.name.slice(0, 1)}
-              </div>
-              <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-base px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30">
-                  <SparkleIcon size={10} className="inline mr-1" /> Featured
-                </span>
-                {current.startup.hashtags.slice(0, 3).map((t) => (
-                  <span key={t} className="rounded-full bg-base/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white border border-surfaceLight">
-                    #{t}
-                  </span>
-                ))}
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-base/90 via-base/50 to-transparent p-6 pt-16">
-                <div className="font-display text-4xl font-extrabold leading-tight">{current.startup.name}</div>
-                <p className="mt-1 max-w-2xl text-white/85">{current.startup.pitch}</p>
-                <div className="mt-2 text-xs text-white/70 font-mono">readiness {Math.round(current.score.readiness)}</div>
-              </div>
-            </div>
-          </button>
-        </div>
 
         <button
           onClick={() => setIndex((i) => (i + 1) % total)}
           aria-label="Next"
-          className="text-textsec transition hover:text-neon-500"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
         >
-          <ChevronRightIcon size={28} />
+          <ArrowRight16 />
         </button>
       </div>
+
+      <FeaturedCard
+        startup={current.startup}
+        score={current.score}
+        onTagClick={onTagClick}
+        onOpen={() => onOpen(current.startup.id)}
+      />
     </section>
   );
 }
 
-// ---------- search & tag filter ----------
+// ---------- list card ----------
+
+function ListCard({
+  startup, upvotes, popping, onOpen, onUpvote, onTagClick,
+}: {
+  startup: Startup;
+  upvotes: number;
+  popping: boolean;
+  onOpen: () => void;
+  onUpvote: () => void;
+  onTagClick: (t: string) => void;
+}) {
+  return (
+    <article className="bento overflow-hidden">
+      <button onClick={onOpen} className="block w-full text-left" aria-label={`Open ${startup.name}`}>
+        <CoverArea name={startup.name} height={220} />
+      </button>
+
+      <div className="p-6">
+        <h3
+          className="cursor-pointer font-display text-2xl font-extrabold leading-tight hover:text-neon-500"
+          onClick={onOpen}
+        >
+          {startup.name}
+        </h3>
+        <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={5} dense /></div>
+        <p className="mt-3 text-sm text-textsec leading-relaxed line-clamp-4">{startup.description ?? startup.pitch}</p>
+
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpvote(); }}
+            className={`group inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-base px-3 py-1.5 transition hover:border-neon-500/40 hover:bg-neon-500/[0.06] ${popping ? 'animate-upvotePop' : ''}`}
+            aria-label="Upvote"
+          >
+            <UpArrow size={16} className="text-textsec group-hover:text-neon-500" />
+            <span className="font-display text-base font-extrabold leading-none">{upvotes}</span>
+          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={onOpen} className="ghost-button !py-2 !px-4 text-sm">
+              Open <ArrowRight16 />
+            </button>
+            {startup.landingUrl ? (
+              <a href={startup.landingUrl} target="_blank" rel="noreferrer" className="neon-button !py-2 !px-4 text-sm">
+                Visit <ArrowRight16 />
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ---------- hashtag bar ----------
 
 function HashtagBar({
-  allItems,
-  selected,
-  onToggleTag,
-  onClear,
+  allItems, selected, onToggleTag, onClear,
 }: {
   allItems: Startup[];
   selected: string[];
   onToggleTag: (t: string) => void;
   onClear: () => void;
 }) {
-  // Popular tags first; selected ones are pinned to the very start so they're
-  // always visible regardless of scroll position.
   const top = useMemo(() => popularTags(allItems, 40), [allItems]);
   const sorted = useMemo(() => {
     const inSel = top.filter((t) => selected.includes(t.tag));
@@ -233,12 +354,12 @@ function HashtagBar({
   }, [top, selected]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pb-3">
+    <div className="mx-auto max-w-5xl px-6 pt-2 pb-1">
       <div className="-mx-2 flex items-center gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {selected.length > 0 ? (
           <button
             onClick={onClear}
-            className="shrink-0 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-textsec hover:text-white"
+            className="shrink-0 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-textsec hover:text-neon-500"
           >
             clear ×
           </button>
@@ -251,8 +372,8 @@ function HashtagBar({
               onClick={() => onToggleTag(tag)}
               className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                 active
-                  ? 'bg-neon-500 text-base'
-                  : 'border border-surfaceLight bg-surface text-textsec hover:text-white hover:border-neon-500/30'
+                  ? 'bg-neon-500 text-ink'
+                  : 'border border-surfaceLight bg-surface text-textsec hover:text-neon-500 hover:border-neon-500/30'
               }`}
             >
               #{tag} <span className="ml-1 text-[10px] opacity-60">{count}</span>
@@ -260,84 +381,6 @@ function HashtagBar({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="text-textsec">
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
-    </svg>
-  );
-}
-
-function ThemeToggle() {
-  const { theme, toggle } = useTheme();
-  return (
-    <button
-      onClick={toggle}
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:text-neon-500 hover:border-neon-500/40"
-    >
-      {theme === 'dark' ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-    </button>
-  );
-}
-
-// ---------- list ----------
-
-function ListCard({
-  startup, upvotes, popping, onOpen, onUpvote, onTagClick,
-}: {
-  startup: Startup;
-  upvotes: number;
-  popping: boolean;
-  onOpen: () => void;
-  onUpvote: () => void;
-  onTagClick: (t: string) => void;
-}) {
-  const cover = coverFor(startup.id);
-  return (
-    <div
-      onClick={onOpen}
-      className="bento group relative flex cursor-pointer items-center gap-5 overflow-hidden p-4 transition hover:border-neon-500/40"
-    >
-      <button
-        onClick={(e) => { e.stopPropagation(); onUpvote(); }}
-        aria-label="Upvote"
-        className={`absolute right-4 top-3 flex flex-col items-center gap-0.5 px-2 py-1 transition hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
-      >
-        <UpArrow size={20} className="text-textsec group-hover:text-neon-500" />
-        <span className="font-display text-xl font-extrabold leading-none">{upvotes}</span>
-      </button>
-
-      <div
-        className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-surfaceLight"
-        style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
-      >
-        <span className="font-display text-4xl font-extrabold text-ink/70">{startup.name.slice(0, 1)}</span>
-      </div>
-
-      <div className="min-w-0 flex-1 pr-12">
-        <div className="font-display text-xl font-bold">{startup.name}</div>
-        <p className="mt-1 line-clamp-2 text-sm text-textsec">{startup.pitch}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {startup.hashtags.slice(0, 4).map((t) => (
-            <button
-              key={t}
-              onClick={(e) => { e.stopPropagation(); onTagClick(t); }}
-              className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec hover:text-neon-500 hover:border-neon-500/40"
-            >
-              #{t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <ArrowRightIcon className="hidden text-textsec group-hover:text-white sm:block" />
     </div>
   );
 }
@@ -374,16 +417,16 @@ function DetailDialog({
       <button
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
         aria-label="Previous"
-        className="absolute left-2 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500 md:left-6"
+        className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:left-8"
       >
-        <ChevronLeftIcon size={32} />
+        <div style={{ transform: 'rotate(180deg)' }}><ArrowRight16 /></div>
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onNext(); }}
         aria-label="Next"
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500 md:right-6"
+        className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:right-8"
       >
-        <ChevronRightIcon size={32} />
+        <ArrowRight16 />
       </button>
 
       <div
@@ -415,25 +458,15 @@ function DetailDialog({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-3xl font-extrabold">{startup.name}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                {startup.hashtags.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => onTagClick(t)}
-                    className="rounded-full border border-surfaceLight bg-base px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec hover:text-neon-500 hover:border-neon-500/40"
-                  >
-                    #{t}
-                  </button>
-                ))}
-              </div>
+              <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={12} /></div>
             </div>
 
             <a href={startup.landingUrl ?? '#'} target="_blank" rel="noreferrer" className="neon-button text-base">
-              Visit landing <ArrowRightIcon />
+              Visit landing <ArrowRight16 />
             </a>
           </div>
 
-          <p className="mt-5 font-display text-lg leading-snug text-white/90">{startup.pitch}</p>
+          <p className="mt-5 font-display text-lg leading-snug">{startup.pitch}</p>
         </div>
 
         <div className="pt-6">
@@ -448,7 +481,7 @@ function DetailDialog({
         {startup.description ? (
           <div className="px-7 pt-6">
             <div className="display-mono pb-2">about</div>
-            <p className="text-white/80 leading-relaxed">{startup.description}</p>
+            <p className="text-textsec leading-relaxed whitespace-pre-line">{startup.description}</p>
           </div>
         ) : null}
 
@@ -467,7 +500,7 @@ function DetailDialog({
           <div className="flex gap-2">
             <Link to="/login" className="ghost-button"><GithubIcon /> Continue with GitHub</Link>
             <a href={startup.landingUrl ?? '#'} target="_blank" rel="noreferrer" className="neon-button">
-              Visit landing <ArrowRightIcon />
+              Visit landing <ArrowRight16 />
             </a>
           </div>
         </div>
@@ -564,25 +597,24 @@ export function Landing() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-5">
+      <header className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="lg" />
+          <Wordmark size="xl" />
         </Link>
 
         <div className="flex-1" />
 
-        {/* Search — compact, sits before the actions. */}
-        <div className="flex w-[240px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3.5 py-2 focus-within:border-neon-500/60">
+        <div className="flex w-[360px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
           <SearchIcon />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search…"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-textsec"
+            placeholder="Search name, pitch, hashtag…"
+            className="flex-1 bg-transparent text-base outline-none placeholder:text-textsec"
           />
           {query ? (
             <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear search">
-              <XIcon size={12} />
+              <XIcon size={14} />
             </button>
           ) : null}
         </div>
@@ -601,15 +633,12 @@ export function Landing() {
 
       <FeaturedCarousel
         items={featured}
-        upvotes={upvotes}
-        baseline={baseline}
-        popping={popping}
-        onUpvote={upvote}
         onOpen={openById}
+        onTagClick={(t) => setTags((cur) => toggleTag(cur, t))}
       />
 
       <main className="mx-auto max-w-5xl px-6 pb-16 pt-8">
-        <ul className="flex flex-col gap-4">
+        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {list.map(({ startup }) => (
             <li key={startup.id}>
               <ListCard
@@ -623,7 +652,7 @@ export function Landing() {
             </li>
           ))}
           {list.length === 0 ? (
-            <li className="bento p-6 text-textsec">
+            <li className="bento p-6 text-textsec md:col-span-2">
               <SparkleIcon size={14} className="inline mr-1 text-neon-500" /> Nothing matches — clear filters or change the query.
             </li>
           ) : null}
