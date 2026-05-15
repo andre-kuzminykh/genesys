@@ -35,7 +35,7 @@ describe('TEST-GEN-024 — Marketplace lists only published startups in active b
       </AppStoreProvider>,
     );
     // Login UI exists.
-    expect(screen.getByPlaceholderText('your-github-handle')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/ghp_|github_pat/)).toBeInTheDocument();
     unmount();
 
     // Simulate session by writing directly to localStorage.

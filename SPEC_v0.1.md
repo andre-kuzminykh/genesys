@@ -1025,6 +1025,64 @@ under cards. Also: real GitHub handle should be on the allowlist.
 
 ---
 
+## 14. Real GitHub authentication (added 2026-05-15)
+
+The mocked login is now a secondary path. The primary identity in the demo
+is a real GitHub session backed by a Personal Access Token (PAT). OAuth code
+flow would require a server-side secret, which the deployment doesn't have;
+PAT covers the same surface area for a single-user demo.
+
+### 14.1 Flow
+
+1. **Login**: the input on `/login` accepts either:
+   - A **token** (recognised by the prefixes `ghp_`, `github_pat_`, `gho_`,
+     `ghs_`, `ghu_`, `ghr_`) — verified via `GET /user`.
+   - A **handle** — mock path (kept for demo + screenshots).
+2. On token success, the verified GitHub login goes through the allowlist
+   check. Approved → session contains `{handle, accessToken, name, avatarUrl}`.
+3. **PickRepo** (`/onboarding/repo`):
+   - If session has `accessToken`, call `GET /user/repos?sort=pushed&per_page=20&affiliation=…`
+     and, for each repo, parallel-probe canonical spec/tests paths
+     (`genesys/spec`, `docs/spec`, `spec`, `SPEC.md`, `SPEC_v0.1.md` and
+     `genesys/tests`, `tests`, `__tests__`, `test`).
+   - Otherwise (no token): fall back to `mockRepos` for the seeded demo
+     handles (`alice/aurora`, etc.).
+4. CTA per repo unchanged: "Open dashboard" (found) or 🚀 "Start from
+   scratch" (partial/missing). Both → `/coming-soon`.
+
+### 14.2 New domain module — `domain/github.ts`
+
+Browser-only wrapper around the GitHub REST API. Public functions:
+`looksLikePAT(s)`, `verifyToken(token)`, `listRepos(token, perPage)`,
+`pathExists(token, fullName, path)`, `scanRepoLive(token, repo)`,
+`listAndScan(token, cap)`. Errors thrown as `GhError(status, message)`.
+
+### 14.3 UI cleanup on PickRepo
+
+The "signed in as @handle" badge is now in the **header**, on the same row
+as the wordmark and the Cancel link (was on its own line under the title).
+The token-mode page subtitle reads "Genesys is scanning your GitHub repos
+for `/genesys/spec` and `/genesys/tests`"; the mock-mode subtitle reads
+"Demo mode — repositories below are mocked".
+
+### 14.4 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-200 | A string starting with `ghp_`, `github_pat_`, `gho_`, `ghs_`, `ghu_`, `ghr_` MUST be treated as a GitHub PAT. | TEST-GEN-200 |
+| FR-GEN-201 | `verifyToken(token)` MUST call `GET https://api.github.com/user` with `Authorization: token <token>` and return the user on 200 or throw `GhError` otherwise. | TEST-GEN-201 |
+| FR-GEN-202 | `listRepos(token)` MUST sort by pushed-desc and respect the configured `per_page`. `pathExists(...)` MUST return true iff the GitHub Contents API responds 200. `scanRepoLive(...)` MUST set `hasSpec`/`hasTests` true iff ANY of the canonical paths exist. | TEST-GEN-202 |
+| FR-GEN-203 | The Login form MUST detect a PAT-shaped input and call `loginWithToken`; non-PAT input falls back to the mock allowlist login. | (covered by integration test scenarios) |
+| FR-GEN-204 | PickRepo MUST use real repos (via `listAndScan`) when the session carries an `accessToken`; otherwise the mock list. | (covered by code path; mocked at unit level) |
+
+### 14.5 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Real GitHub login (PAT) | UC-GEN-001, UC-GEN-023, UC-GEN-024 | FR-GEN-200..204 | TEST-GEN-200..202 |
+
+---
+
 ## 13. Invest via Landing wallet (added 2026-05-15)
 
 The user can invest into a published startup directly from the public

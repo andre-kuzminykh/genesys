@@ -188,6 +188,11 @@ export interface Score {
 export interface Session {
   handle: string;
   loggedInAt: number;
+  /** GitHub Personal Access Token, set when the user signed in for real. */
+  accessToken?: string;
+  /** Real GitHub display name, fetched from /user when authenticating with a token. */
+  name?: string;
+  avatarUrl?: string;
 }
 
 export interface AppState {

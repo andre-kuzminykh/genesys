@@ -10,6 +10,7 @@ import { MockPersonaSimulator } from '@/ai/personas';
 import { validateWeights } from '@/domain/scoring';
 import { reposFor, REPO_TO_STARTUP } from '@/data/mockRepos';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
+import { verifyToken } from '@/domain/github';
 
 const analyst = new MockAiAnalyst();
 const simulator = new MockPersonaSimulator();
@@ -18,6 +19,10 @@ type Ctx = {
   state: AppState;
   // session
   login: (handle: string) => { ok: true } | { ok: false; reason: 'NOT_ON_ALLOWLIST' };
+  loginWithToken: (token: string) => Promise<
+    | { ok: true; handle: string }
+    | { ok: false; reason: 'BAD_TOKEN' | 'NOT_ON_ALLOWLIST' | 'NETWORK'; message?: string }
+  >;
   logout: () => void;
   // batch admin
   addAllowlistHandle: (handle: string) => void;
@@ -77,6 +82,36 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [update]);
 
   const logout = useCallback(() => update((s) => ({ ...s, session: null })), [update]);
+
+  const loginWithToken = useCallback(async (token: string) => {
+    const cur = ref.current;
+    const batch = cur.batches.find((b) => b.id === cur.activeBatchId);
+    if (!batch) return { ok: false as const, reason: 'NOT_ON_ALLOWLIST' as const };
+    let user: { login: string; name: string | null; avatar_url: string };
+    try {
+      user = await verifyToken(token.trim());
+    } catch (e: any) {
+      if (e && typeof e === 'object' && 'status' in e) {
+        return { ok: false as const, reason: 'BAD_TOKEN' as const, message: String(e.message ?? '') };
+      }
+      return { ok: false as const, reason: 'NETWORK' as const, message: String(e?.message ?? e) };
+    }
+    const handle = user.login.toLowerCase();
+    if (!canLogin(handle, batch.allowlist)) {
+      return { ok: false as const, reason: 'NOT_ON_ALLOWLIST' as const };
+    }
+    update((s) => ({
+      ...s,
+      session: {
+        handle,
+        loggedInAt: Date.now(),
+        accessToken: token.trim(),
+        name: user.name ?? undefined,
+        avatarUrl: user.avatar_url,
+      },
+    }));
+    return { ok: true as const, handle };
+  }, [update]);
 
   const addAllowlistHandle = useCallback((h: string) => update((s) => ({
     ...s,
@@ -292,7 +327,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const value: Ctx = useMemo(() => ({
     state,
-    login, logout,
+    login, loginWithToken, logout,
     addAllowlistHandle, removeAllowlistHandle,
     setWeights, setSelfInvestPolicy, setCreditsPerInvestor,
     createStartup, attachRepo, togglePublished, setAuxScores,
@@ -300,7 +335,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     invest, runSimulation,
     myRepos, scanMyRepo, importStartupFromRepo,
     reset, remaining,
-  }), [state, login, logout, addAllowlistHandle, removeAllowlistHandle, setWeights, setSelfInvestPolicy, setCreditsPerInvestor, createStartup, attachRepo, togglePublished, setAuxScores, runAnalystInterview, addNode, editNode, removeNode, linkFrToTest, invest, runSimulation, myRepos, scanMyRepo, importStartupFromRepo, reset, remaining]);
+  }), [state, login, loginWithToken, logout, addAllowlistHandle, removeAllowlistHandle, setWeights, setSelfInvestPolicy, setCreditsPerInvestor, createStartup, attachRepo, togglePublished, setAuxScores, runAnalystInterview, addNode, editNode, removeNode, linkFrToTest, invest, runSimulation, myRepos, scanMyRepo, importStartupFromRepo, reset, remaining]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }
