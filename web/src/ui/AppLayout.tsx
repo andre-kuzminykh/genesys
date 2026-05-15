@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from './AppStore';
 import { Avatar } from './components/Avatar';
+import { Wordmark, WordmarkMark } from './components/Wordmark';
 import {
   ChartIcon,
   CoinIcon,
@@ -50,17 +51,11 @@ export function AppLayout() {
   return (
     <div className="min-h-screen grid grid-cols-[260px_1fr]">
       <aside className="border-r border-white/[0.06] bg-ink-900/40 backdrop-blur-xl">
-        <div className="flex h-16 items-center gap-3 px-5">
-          <div className="relative">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-neon-500 text-ink-950 font-display font-bold">
-              G
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-sky-400 animate-pulseGlow" />
-          </div>
-          <div>
-            <div className="font-display text-sm font-semibold leading-tight">Genesys</div>
-            <div className="display-mono">startup&nbsp;studio</div>
-          </div>
+        <div className="flex h-16 items-center px-5">
+          <NavLink to="/app" aria-label="Genesys home" className="inline-flex items-baseline gap-1">
+            <Wordmark size="sm" />
+            <span className="display-mono ml-2 hidden xl:inline">studio</span>
+          </NavLink>
         </div>
 
         <div className="px-3">

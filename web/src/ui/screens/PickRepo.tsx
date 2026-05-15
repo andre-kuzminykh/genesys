@@ -4,6 +4,7 @@ import { useStore } from '../AppStore';
 import { Bento, BentoHeader } from '../components/Bento';
 import { Chip } from '../components/Chip';
 import { ArrowRightIcon, CheckIcon, GithubIcon, SparkleIcon, XIcon } from '../design/Icon';
+import { Wordmark } from '../components/Wordmark';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 
 export function PickRepo() {
@@ -30,12 +31,9 @@ export function PickRepo() {
   return (
     <div className="relative min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-neon-500 text-base font-display text-lg font-extrabold">
-            G
-          </div>
-          <div className="font-display font-bold">Genesys</div>
-        </div>
+        <Link to="/" aria-label="Genesys home">
+          <Wordmark size="md" />
+        </Link>
         <Link to="/" className="ghost-button"><XIcon size={12} /> Cancel</Link>
       </header>
 

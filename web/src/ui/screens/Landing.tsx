@@ -4,19 +4,20 @@ import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
 import { ArrowRightIcon, GithubIcon, SparkleIcon, XIcon } from '../design/Icon';
+import { Wordmark } from '../components/Wordmark';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
 import { searchStartups } from '@/domain/search';
 
 // ---------- helpers ----------
 
 const COVERS = [
-  { from: '#D5FF00', to: '#82A0FF' },
+  { from: '#7FFF00', to: '#82A0FF' },
   { from: '#82A0FF', to: '#B698FF' },
   { from: '#FFB05A', to: '#5EE6A8' },
-  { from: '#FF4B4B', to: '#D5FF00' },
+  { from: '#FF4B4B', to: '#7FFF00' },
   { from: '#5EE6A8', to: '#82A0FF' },
-  { from: '#B698FF', to: '#E3FF33' },
-  { from: '#E3FF33', to: '#FFB05A' },
+  { from: '#B698FF', to: '#9DFF40' },
+  { from: '#9DFF40', to: '#FFB05A' },
   { from: '#82A0FF', to: '#5EE6A8' },
 ];
 
@@ -581,10 +582,9 @@ export function Landing() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-neon-500 text-base font-display text-lg font-extrabold">G</div>
-          <div className="font-display font-bold">Genesys</div>
-        </div>
+        <Link to="/" aria-label="Genesys home">
+          <Wordmark size="md" />
+        </Link>
         <Link to="/login" className="ghost-button"><GithubIcon /> Login</Link>
       </header>
 

@@ -5,12 +5,12 @@ function hashCode(s: string): number {
 }
 
 const PALETTE = [
-  ['#D5FF00', '#82A0FF'],
+  ['#7FFF00', '#82A0FF'],
   ['#82A0FF', '#B698FF'],
   ['#FFB05A', '#5EE6A8'],
-  ['#FF4B4B', '#D5FF00'],
+  ['#FF4B4B', '#7FFF00'],
   ['#5EE6A8', '#82A0FF'],
-  ['#B698FF', '#E3FF33'],
+  ['#B698FF', '#9DFF40'],
 ];
 
 export function Avatar({ seed, size = 36 }: { seed: string; size?: number }) {

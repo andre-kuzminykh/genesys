@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
 import { Avatar } from '../components/Avatar';
+import { Wordmark } from '../components/Wordmark';
 import { GithubIcon, LockIcon, RocketIcon, ShieldIcon } from '../design/Icon';
 
 export function Login() {
@@ -45,6 +46,9 @@ export function Login() {
 
       <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-6 py-10 md:grid-cols-2">
         <div>
+          <Link to="/" aria-label="Genesys home" className="mb-7 inline-block">
+            <Wordmark size="md" />
+          </Link>
           <Chip tone="yellow" icon={<RocketIcon size={12} />}>GENESYS-001 · May Cohort</Chip>
           <h1 className="mt-5 font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
             One door in.

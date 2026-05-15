@@ -6,7 +6,7 @@
   html, body, #root { height: 100%; }
   body {
     background:
-      radial-gradient(800px 600px at 0% -10%, rgba(213,255,0,0.10), transparent 60%),
+      radial-gradient(800px 600px at 0% -10%, rgba(127,255,0,0.10), transparent 60%),
       radial-gradient(900px 700px at 100% 0%, rgba(130,160,255,0.10), transparent 60%),
       #0B0D14;
     color: #FFFFFF;
@@ -16,7 +16,7 @@
   }
 
   ::selection {
-    background: #D5FF00;
+    background: #7FFF00;
     color: #0B0D14;
   }
 
@@ -37,7 +37,7 @@
   .bento-inset {
     @apply rounded-2xl border border-surfaceLight bg-base;
   }
-  .glow-yellow { box-shadow: 0 0 0 1px rgba(213,255,0,0.35), 0 0 30px rgba(213,255,0,0.20); }
+  .glow-yellow { box-shadow: 0 0 0 1px rgba(127,255,0,0.35), 0 0 30px rgba(127,255,0,0.20); }
   .glow-sky    { box-shadow: 0 0 0 1px rgba(130,160,255,0.35), 0 0 30px rgba(130,160,255,0.20); }
   .grid-bg {
     background-image:
