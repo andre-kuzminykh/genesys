@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { loadState } from './store';
 import { seedState } from './seed';
 
-const KEY_V02 = 'genesys:v0.2';
+const KEY_CURRENT = 'genesys:v0.3';
 const KEY_V01 = 'genesys:v0.1';
 const KEY_LEGACY = 'genesis:v0.1';
 
@@ -20,7 +20,7 @@ describe('store.loadState — schema migration', () => {
     // Fresh seed is what we get back.
     expect(loaded.startups.length).toBeGreaterThan(0);
     // And the current key now exists.
-    expect(localStorage.getItem(KEY_V02)).not.toBeNull();
+    expect(localStorage.getItem(KEY_CURRENT)).not.toBeNull();
   });
 
   it('repairs startups that lack the hashtags field (schema v0.1 → v0.2)', () => {
@@ -33,7 +33,7 @@ describe('store.loadState — schema migration', () => {
         return rest;
       }),
     };
-    localStorage.setItem(KEY_V02, JSON.stringify(oldShape));
+    localStorage.setItem(KEY_CURRENT, JSON.stringify(oldShape));
 
     const loaded = loadState();
 
@@ -45,7 +45,7 @@ describe('store.loadState — schema migration', () => {
   });
 
   it('falls back to seed when stored JSON is malformed', () => {
-    localStorage.setItem(KEY_V02, '{"this is": "not the right shape"}');
+    localStorage.setItem(KEY_CURRENT, '{"this is": "not the right shape"}');
     const loaded = loadState();
     expect(loaded.startups.length).toBeGreaterThan(0);
     expect(loaded.users.length).toBeGreaterThan(0);

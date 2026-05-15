@@ -1,8 +1,8 @@
 import type { AppState } from '@/domain/types';
 import { seedState } from './seed';
 
-const KEY = 'genesys:v0.2';
-const LEGACY_KEYS = ['genesys:v0.1', 'genesis:v0.1'];
+const KEY = 'genesys:v0.3';
+const LEGACY_KEYS = ['genesys:v0.2', 'genesys:v0.1', 'genesis:v0.1'];
 
 /** Defensive migration — make sure every entity matches the current schema. */
 function migrate(state: AppState): AppState {

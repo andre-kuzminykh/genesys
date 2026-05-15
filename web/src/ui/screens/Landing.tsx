@@ -3,8 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { ArrowRightIcon, GithubIcon, SparkleIcon, XIcon } from '../design/Icon';
+import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon } from '../design/Icon';
 import { Wordmark } from '../components/Wordmark';
+import { useTheme } from '../Theme';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
 import { searchStartups } from '@/domain/search';
 
@@ -149,13 +150,13 @@ function FeaturedCarousel({
         <div />
       </div>
 
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <button
           onClick={() => setIndex((i) => (i - 1 + total) % total)}
           aria-label="Previous"
-          className="rounded-full border border-surfaceLight bg-surface p-3 text-white hover:border-neon-500/40 hover:text-neon-500"
+          className="text-textsec transition hover:text-neon-500"
         >
-          <ArrowRightIcon className="rotate-180" />
+          <ChevronLeftIcon size={28} />
         </button>
 
         <div className="relative">
@@ -163,10 +164,10 @@ function FeaturedCarousel({
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(current.startup.id); }}
             aria-label="Upvote"
-            className={`absolute top-3 right-4 z-10 flex flex-col items-center text-base/90 hover:text-neon-500 ${isPopping ? 'animate-upvotePop' : ''}`}
+            className={`absolute top-4 right-4 z-10 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${isPopping ? 'animate-upvotePop' : ''}`}
           >
-            <UpArrow size={20} />
-            <span className="mt-0.5 font-display text-lg font-extrabold leading-none">{upvoteCount}</span>
+            <UpArrow size={22} className="text-neon-500" />
+            <span className="font-display text-2xl font-extrabold leading-none">{upvoteCount}</span>
           </button>
 
           <button
@@ -175,7 +176,7 @@ function FeaturedCarousel({
             style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
           >
             <div className="relative h-[300px] sm:h-[340px]">
-              <div className="absolute -left-6 -bottom-10 select-none font-display text-[280px] font-extrabold leading-none text-base/30">
+              <div className="absolute -left-6 -bottom-10 select-none font-display text-[280px] font-extrabold leading-none text-ink/30">
                 {current.startup.name.slice(0, 1)}
               </div>
               <div className="absolute top-4 left-4 flex flex-wrap items-center gap-2">
@@ -191,7 +192,7 @@ function FeaturedCarousel({
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-base/90 via-base/50 to-transparent p-6 pt-16">
                 <div className="font-display text-4xl font-extrabold leading-tight">{current.startup.name}</div>
                 <p className="mt-1 max-w-2xl text-white/85">{current.startup.pitch}</p>
-                <div className="mt-2 text-xs text-white/70 font-mono">readiness {Math.round(current.score.readiness)} · @{current.startup.ownerHandle}</div>
+                <div className="mt-2 text-xs text-white/70 font-mono">readiness {Math.round(current.score.readiness)}</div>
               </div>
             </div>
           </button>
@@ -200,9 +201,9 @@ function FeaturedCarousel({
         <button
           onClick={() => setIndex((i) => (i + 1) % total)}
           aria-label="Next"
-          className="rounded-full border border-surfaceLight bg-surface p-3 text-white hover:border-neon-500/40 hover:text-neon-500"
+          className="text-textsec transition hover:text-neon-500"
         >
-          <ArrowRightIcon />
+          <ChevronRightIcon size={28} />
         </button>
       </div>
     </section>
@@ -272,6 +273,20 @@ function SearchIcon() {
   );
 }
 
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:text-neon-500 hover:border-neon-500/40"
+    >
+      {theme === 'dark' ? <SunIcon size={16} /> : <MoonIcon size={16} />}
+    </button>
+  );
+}
+
 // ---------- list ----------
 
 function ListCard({
@@ -293,17 +308,17 @@ function ListCard({
       <button
         onClick={(e) => { e.stopPropagation(); onUpvote(); }}
         aria-label="Upvote"
-        className={`absolute top-3 right-4 flex flex-col items-center text-textsec transition hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
+        className={`absolute right-4 top-3 flex flex-col items-center gap-0.5 px-2 py-1 transition hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
       >
-        <UpArrow size={18} />
-        <span className="mt-0.5 font-display text-base font-extrabold leading-none">{upvotes}</span>
+        <UpArrow size={20} className="text-textsec group-hover:text-neon-500" />
+        <span className="font-display text-xl font-extrabold leading-none">{upvotes}</span>
       </button>
 
       <div
         className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-surfaceLight"
         style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
       >
-        <span className="font-display text-4xl font-extrabold text-base/70">{startup.name.slice(0, 1)}</span>
+        <span className="font-display text-4xl font-extrabold text-ink/70">{startup.name.slice(0, 1)}</span>
       </div>
 
       <div className="min-w-0 flex-1 pr-12">
@@ -319,7 +334,6 @@ function ListCard({
               #{t}
             </button>
           ))}
-          <span className="ml-2 text-xs text-textsec">@{startup.ownerHandle}</span>
         </div>
       </div>
 
@@ -331,12 +345,11 @@ function ListCard({
 // ---------- detail dialog ----------
 
 function DetailDialog({
-  startup, score, ownerName, upvotes, popping,
+  startup, score, upvotes, popping,
   onClose, onNext, onPrev, onUpvote, index, total, onTagClick,
 }: {
   startup: Startup;
   score: Score;
-  ownerName?: string;
   upvotes: number;
   popping: boolean;
   onClose: () => void;
@@ -361,16 +374,16 @@ function DetailDialog({
       <button
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
         aria-label="Previous"
-        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-surfaceLight bg-base/80 p-3 text-white hover:border-neon-500/40 hover:text-neon-500 md:left-8"
+        className="absolute left-2 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500 md:left-6"
       >
-        <ArrowRightIcon className="rotate-180" />
+        <ChevronLeftIcon size={32} />
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onNext(); }}
         aria-label="Next"
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-surfaceLight bg-base/80 p-3 text-white hover:border-neon-500/40 hover:text-neon-500 md:right-8"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500 md:right-6"
       >
-        <ArrowRightIcon />
+        <ChevronRightIcon size={32} />
       </button>
 
       <div
@@ -379,22 +392,22 @@ function DetailDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative h-60 w-full" style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}>
-          <div className="absolute -left-6 -bottom-10 select-none font-display text-[260px] font-extrabold leading-none text-base/25">
+          <div className="absolute -left-6 -bottom-10 select-none font-display text-[260px] font-extrabold leading-none text-ink/25">
             {startup.name.slice(0, 1)}
           </div>
           <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 rounded-full bg-base/80 p-2 text-white hover:bg-base">
             <XIcon size={14} />
           </button>
-          <div className="absolute bottom-3 left-4 font-mono text-xs text-base/80">
+          <div className="absolute bottom-3 left-4 font-mono text-xs text-ink/80">
             {String(index).padStart(2, '0')} / {String(total).padStart(2, '0')}
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
             aria-label="Upvote"
-            className={`absolute bottom-3 right-3 flex flex-col items-center text-base hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
+            className={`absolute bottom-3 right-3 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${popping ? 'animate-upvotePop' : ''}`}
           >
-            <UpArrow size={20} />
-            <span className="mt-0.5 font-display text-lg font-extrabold leading-none">{upvotes}</span>
+            <UpArrow size={22} className="text-neon-500" />
+            <span className="font-display text-2xl font-extrabold leading-none">{upvotes}</span>
           </button>
         </div>
 
@@ -413,7 +426,6 @@ function DetailDialog({
                   </button>
                 ))}
               </div>
-              <div className="mt-2 text-sm text-textsec">{ownerName ?? '@' + startup.ownerHandle}</div>
             </div>
 
             <a href={startup.landingUrl ?? '#'} target="_blank" rel="noreferrer" className="neon-button text-base">
@@ -517,8 +529,6 @@ export function Landing() {
 
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const showHashtags = searchFocused || query.trim().length > 0 || tags.length > 0;
 
   const list = useMemo(() => {
     const startups = published.map((p) => p.startup);
@@ -556,18 +566,18 @@ export function Landing() {
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="sm" />
+          <Wordmark size="lg" />
         </Link>
 
-        {/* Search — between logo and login. Focus reveals the hashtag bar below. */}
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2 focus-within:border-neon-500/60">
+        <div className="flex-1" />
+
+        {/* Search — compact, sits before the actions. */}
+        <div className="flex w-[240px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3.5 py-2 focus-within:border-neon-500/60">
           <SearchIcon />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            placeholder="Search name, pitch, hashtag…"
+            placeholder="Search…"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-textsec"
           />
           {query ? (
@@ -577,17 +587,17 @@ export function Landing() {
           ) : null}
         </div>
 
+        <ThemeToggle />
+
         <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
       </header>
 
-      {showHashtags ? (
-        <HashtagBar
-          allItems={published.map((p) => p.startup)}
-          selected={tags}
-          onToggleTag={(t) => setTags((cur) => toggleTag(cur, t))}
-          onClear={() => setTags([])}
-        />
-      ) : null}
+      <HashtagBar
+        allItems={published.map((p) => p.startup)}
+        selected={tags}
+        onToggleTag={(t) => setTags((cur) => toggleTag(cur, t))}
+        onClear={() => setTags([])}
+      />
 
       <FeaturedCarousel
         items={featured}
@@ -624,7 +634,6 @@ export function Landing() {
         <DetailDialog
           startup={open.startup}
           score={open.score}
-          ownerName={state.users.find((u) => u.handle === open.startup.ownerHandle)?.name}
           upvotes={upvoteOf(open.startup.id)}
           popping={popping === open.startup.id}
           onClose={close}

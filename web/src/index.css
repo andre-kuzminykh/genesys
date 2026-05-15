@@ -3,14 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  :root, html[data-theme="dark"] {
+    --c-base:         11  13  20;
+    --c-surface:      26  29  39;
+    --c-surfaceLight: 42  46  61;
+    --c-textsec:      160 165 181;
+    --c-text:         255 255 255;
+  }
+  html[data-theme="light"] {
+    --c-base:         248 250 252;
+    --c-surface:      255 255 255;
+    --c-surfaceLight: 226 232 240;
+    --c-textsec:      100 116 139;
+    --c-text:         11 13 20;
+  }
+
   html, body, #root { height: 100%; }
   body {
-    background: #0B0D14;
-    color: #FFFFFF;
+    background: rgb(var(--c-base));
+    color: rgb(var(--c-text));
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Theme-aware override for utility text colors that don't auto-flip */
+  html[data-theme="light"] .text-white { color: rgb(var(--c-text)); }
 
   ::selection {
     background: #7FFF00;
@@ -19,12 +37,12 @@
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #0B0D14; }
+  ::-webkit-scrollbar-track { background: rgb(var(--c-base)); }
   ::-webkit-scrollbar-thumb {
-    background: #2A2E3D;
+    background: rgb(var(--c-surfaceLight));
     border-radius: 4px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #A0A5B5; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-textsec)); }
 }
 
 @layer components {
@@ -45,15 +63,16 @@
   }
 
   .neon-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-base transition-all duration-300
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-all duration-300
       bg-neon-500 hover:bg-neon-400 active:bg-neon-600 hover:shadow-neon;
   }
   .ghost-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-white transition-all duration-300
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold transition-all duration-300
       border border-surfaceLight bg-transparent hover:bg-surfaceLight;
+    color: rgb(var(--c-text));
   }
   .sky-button {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-base transition-all duration-300
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-all duration-300
       bg-softblue hover:bg-sky-500 hover:shadow-sky;
   }
   .soft-button {
@@ -65,12 +84,12 @@
       bg-danger/80 hover:bg-danger;
   }
 
-  /* Pill chips like in the kit */
+  /* Pill chips */
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border;
   }
   .chip-yellow { @apply text-neon-500 border-neon-500/30 bg-neon-500/10; }
-  .chip-yellow-solid { @apply text-base border-neon-500/0 bg-neon-500; }
+  .chip-yellow-solid { @apply text-ink border-neon-500/0 bg-neon-500; }
   .chip-sky    { @apply text-softblue border-softblue/30 bg-softblue/10; }
   .chip-green  { @apply text-signal-green border-signal-green/30 bg-signal-green/10; }
   .chip-red    { @apply text-danger border-danger/30 bg-danger/10; }

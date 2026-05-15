@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './index.css';
 import { AppStoreProvider } from './ui/AppStore';
+import { ThemeProvider } from './ui/Theme';
 import { AuthGate } from './ui/AuthGate';
 import { AppLayout } from './ui/AppLayout';
 import { Landing } from './ui/screens/Landing';
@@ -27,8 +28,9 @@ import { PickRepo } from './ui/screens/PickRepo';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AppStoreProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AppStoreProvider>
+        <BrowserRouter>
         <Routes>
           {/* public */}
           <Route path="/" element={<Landing />} />
@@ -65,7 +67,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AppStoreProvider>
+        </BrowserRouter>
+      </AppStoreProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 );

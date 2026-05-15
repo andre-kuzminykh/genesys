@@ -2,26 +2,29 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        // semantic aliases that match the UI kit
-        base: '#0B0D14',
-        surface: '#1A1D27',
-        surfaceLight: '#2A2E3D',
-        textsec: '#A0A5B5',
+        // theme-flippable surfaces; backed by CSS vars in index.css so we can swap dark/light.
+        base:         'rgb(var(--c-base) / <alpha-value>)',
+        surface:      'rgb(var(--c-surface) / <alpha-value>)',
+        surfaceLight: 'rgb(var(--c-surfaceLight) / <alpha-value>)',
+        textsec:      'rgb(var(--c-textsec) / <alpha-value>)',
+
+        // Static brand accents (never change with theme).
         softblue: '#82A0FF',
         danger: '#FF4B4B',
+        ink: '#0B0D14',     // always-dark for text on neon/softblue buttons
+        paper: '#F8FAFC',   // always-light alternative for ink
 
-        // shaded scales used across the app
-        ink: {
-          950: '#0B0D14', // base
-          900: '#1A1D27', // surface
-          800: '#2A2E3D', // surfaceLight
-          700: '#363B4D',
-          600: '#444A5E',
-          500: '#5A6075',
-        },
+        // Dark-default shaded scale, kept for legacy refs in screens.
+        'ink-950': '#0B0D14',
+        'ink-900': '#1A1D27',
+        'ink-800': '#2A2E3D',
+        'ink-700': '#363B4D',
+        'ink-600': '#444A5E',
+        'ink-500': '#5A6075',
         neon: {
           400: '#9DFF40', // hover
           500: '#7FFF00', // primary
