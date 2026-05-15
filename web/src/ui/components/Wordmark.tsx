@@ -38,8 +38,8 @@ export function Wordmark({
         aria-hidden
       />
       <span
-        className="text-softblue"
-        style={{ letterSpacing: '0.02em' }}
+        className="font-extrabold text-softblue"
+        style={{ letterSpacing: '-0.02em' }}
       >
         genesys
       </span>

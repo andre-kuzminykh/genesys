@@ -5,10 +5,7 @@
 @layer base {
   html, body, #root { height: 100%; }
   body {
-    background:
-      radial-gradient(800px 600px at 0% -10%, rgba(127,255,0,0.10), transparent 60%),
-      radial-gradient(900px 700px at 100% 0%, rgba(130,160,255,0.10), transparent 60%),
-      #0B0D14;
+    background: #0B0D14;
     color: #FFFFFF;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

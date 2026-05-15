@@ -133,9 +133,10 @@ function FeaturedCarousel({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="flex items-center justify-between px-2 pb-3">
-        <div className="display-mono">today's launches · top {total}</div>
-        <div className="flex items-center gap-1.5">
+      {/* OUTSIDE-frame controls: [prev] | slide | [next]. The slide keeps its rounded border. */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
+        <div /> {/* spacer so dots align with the slide column */}
+        <div className="flex items-center justify-center gap-1.5 pb-3">
           {items.map((_, i) => (
             <button
               key={i}
@@ -145,9 +146,9 @@ function FeaturedCarousel({
             />
           ))}
         </div>
+        <div />
       </div>
 
-      {/* OUTSIDE-frame controls: [prev] | slide | [next]. The slide keeps its rounded border. */}
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
         <button
           onClick={() => setIndex((i) => (i - 1 + total) % total)}
@@ -210,65 +211,38 @@ function FeaturedCarousel({
 
 // ---------- search & tag filter ----------
 
-function SearchAndFilters({
+function HashtagBar({
   allItems,
-  query, onQuery,
-  selected, onToggleTag, onClear,
+  selected,
+  onToggleTag,
+  onClear,
 }: {
   allItems: Startup[];
-  query: string;
-  onQuery: (v: string) => void;
   selected: string[];
   onToggleTag: (t: string) => void;
   onClear: () => void;
 }) {
-  const top = useMemo(() => popularTags(allItems, 18), [allItems]);
+  // Popular tags first; selected ones are pinned to the very start so they're
+  // always visible regardless of scroll position.
+  const top = useMemo(() => popularTags(allItems, 40), [allItems]);
+  const sorted = useMemo(() => {
+    const inSel = top.filter((t) => selected.includes(t.tag));
+    const rest = top.filter((t) => !selected.includes(t.tag));
+    return [...inSel, ...rest];
+  }, [top, selected]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pt-12">
-      <div className="flex flex-wrap items-end justify-between gap-3 pb-3">
-        <h2 className="font-display text-2xl font-extrabold">All launches</h2>
-        <div className="display-mono">search + multi-tag</div>
-      </div>
-
-      {/* search */}
-      <div className="flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
-        <SearchIcon />
-        <input
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search by name, pitch, description, hashtag…"
-          className="flex-1 bg-transparent text-base outline-none placeholder:text-textsec"
-        />
-        {query ? (
-          <button onClick={() => onQuery('')} className="text-textsec hover:text-white" aria-label="Clear search">
-            <XIcon size={12} />
+    <div className="mx-auto max-w-5xl px-6 pb-3">
+      <div className="-mx-2 flex items-center gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {selected.length > 0 ? (
+          <button
+            onClick={onClear}
+            className="shrink-0 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-textsec hover:text-white"
+          >
+            clear ×
           </button>
         ) : null}
-      </div>
-
-      {/* selected tags */}
-      {selected.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="display-mono">filter:</span>
-          {selected.map((t) => (
-            <button
-              key={t}
-              onClick={() => onToggleTag(t)}
-              className="inline-flex items-center gap-1 rounded-full bg-neon-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-base hover:bg-neon-400"
-              title="Remove"
-            >
-              #{t}
-              <XIcon size={10} />
-            </button>
-          ))}
-          <button onClick={onClear} className="text-xs text-textsec underline hover:text-white">clear all</button>
-        </div>
-      ) : null}
-
-      {/* hashtag chips */}
-      <div className="mt-3 -mx-1 flex flex-wrap gap-2 pb-2">
-        {top.map(({ tag, count }) => {
+        {sorted.map(({ tag, count }) => {
           const active = selected.includes(tag);
           return (
             <button
@@ -543,6 +517,8 @@ export function Landing() {
 
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const showHashtags = searchFocused || query.trim().length > 0 || tags.length > 0;
 
   const list = useMemo(() => {
     const startups = published.map((p) => p.startup);
@@ -552,9 +528,6 @@ export function Landing() {
     const filtered = published.filter((p) => ids.has(p.startup.id));
     return [...filtered].sort((a, b) => upvoteOf(b.startup.id) - upvoteOf(a.startup.id));
   }, [published, tags, query, upvoteOf]);
-
-  const onToggleTag = useCallback((t: string) => setTags((cur) => toggleTag(cur, t)), []);
-  const onClearTags = useCallback(() => setTags([]), []);
 
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const close = useCallback(() => setOpenIndex(null), []);
@@ -581,12 +554,40 @@ export function Landing() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <Link to="/" aria-label="Genesys home">
-          <Wordmark size="md" />
+      <header className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-5">
+        <Link to="/" aria-label="Genesys home" className="shrink-0">
+          <Wordmark size="sm" />
         </Link>
-        <Link to="/login" className="ghost-button"><GithubIcon /> Login</Link>
+
+        {/* Search — between logo and login. Focus reveals the hashtag bar below. */}
+        <div className="flex flex-1 items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2 focus-within:border-neon-500/60">
+          <SearchIcon />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search name, pitch, hashtag…"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-textsec"
+          />
+          {query ? (
+            <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear search">
+              <XIcon size={12} />
+            </button>
+          ) : null}
+        </div>
+
+        <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
       </header>
+
+      {showHashtags ? (
+        <HashtagBar
+          allItems={published.map((p) => p.startup)}
+          selected={tags}
+          onToggleTag={(t) => setTags((cur) => toggleTag(cur, t))}
+          onClear={() => setTags([])}
+        />
+      ) : null}
 
       <FeaturedCarousel
         items={featured}
@@ -597,16 +598,7 @@ export function Landing() {
         onOpen={openById}
       />
 
-      <SearchAndFilters
-        allItems={published.map((p) => p.startup)}
-        query={query}
-        onQuery={setQuery}
-        selected={tags}
-        onToggleTag={onToggleTag}
-        onClear={onClearTags}
-      />
-
-      <main className="mx-auto max-w-5xl px-6 pb-16 pt-2">
+      <main className="mx-auto max-w-5xl px-6 pb-16 pt-8">
         <ul className="flex flex-col gap-4">
           {list.map(({ startup }) => (
             <li key={startup.id}>
