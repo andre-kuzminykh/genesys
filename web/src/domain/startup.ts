@@ -1,4 +1,5 @@
 import type { AppState, Startup } from './types';
+import { normalizeTags } from './tags';
 
 export interface CreateStartupArgs {
   batchId: string;
@@ -7,6 +8,9 @@ export interface CreateStartupArgs {
   pitch: string;
   category: string;
   description?: string;
+  hashtags?: string[];
+  landingUrl?: string;
+  repo?: string;
   now?: number;
 }
 
@@ -42,6 +46,9 @@ export function createStartup(state: AppState, args: CreateStartupArgs): CreateS
     pitch,
     category,
     description: args.description?.trim(),
+    hashtags: normalizeTags(args.hashtags ?? [category]),
+    landingUrl: args.landingUrl?.trim(),
+    repo: args.repo?.trim(),
     published: false,
     createdAt: now,
     techExecution: 40,

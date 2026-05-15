@@ -23,6 +23,7 @@ function startup(overrides: Partial<Startup> = {}): Startup {
   return {
     id: 'S1', batchId: 'B1', ownerHandle: 'alice',
     name: 'Aurora', pitch: 'p', category: 'devtools',
+    hashtags: ['devtools'],
     published: true, createdAt: 0,
     techExecution: 60, marketPotential: 50, pitchScore: 40,
     currentMode: 'MODE-1',

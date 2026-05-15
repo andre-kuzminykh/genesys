@@ -913,3 +913,71 @@ SpecNode {
 ## 8. Handoff to Stage 6 — TDD Implementation
 
 Implementation proceeds in `web/` per §5.6 Roadmap. The test suite is the contract: each FR is paired with a `TEST-GEN-*` and each Must-have feature has at least one component test. §7 additions (versioning, Mermaid, mode tracker, auth gate) are implemented alongside their tests in S1–S3.
+
+---
+
+## 9. Feed, Hashtags, Search & Repo-Driven Onboarding (added 2026-05-14)
+
+This section captures requirements driven by user feedback on the public Landing and the onboarding flow.
+
+### 9.1 New features
+
+| ID | Feature | User | Value | Priority |
+|---|---|---|---|---|
+| FEAT-GEN-019 | Hashtags per startup (multi-tag, user-extendable) | Founder, Viewer | Replace single category with rich AI-app taxonomy | Must |
+| FEAT-GEN-020 | Search across the public feed | Viewer | Find a startup by name/pitch/description/tag | Must |
+| FEAT-GEN-021 | Multi-select hashtag filter (AND intersection) | Viewer | Narrow down quickly with 2+ tags | Must |
+| FEAT-GEN-022 | Carousel controls rendered OUTSIDE the slide frame | Viewer | Cleaner visual; arrows do not occlude content | Should |
+| FEAT-GEN-023 | Mocked GitHub OAuth → repository picker after login | Founder | Match the real OAuth UX; user picks the repo to start from | Must |
+| FEAT-GEN-024 | Repo scan: detect `/genesys/spec` and `/genesys/tests` | Founder, Developer | Auto-import if present; offer to generate otherwise | Must |
+| FEAT-GEN-025 | Repo scan widget inside the Founder's product admin (Repo tab) | Founder | Single place to see "spec found / tests found" and act | Should |
+
+### 9.2 New user stories
+
+| ID | Story | Feature |
+|---|---|---|
+| STORY-GEN-019 | As a Founder, I want to attach many hashtags to my startup so that it shows up in the right slices of the feed. | FEAT-GEN-019 |
+| STORY-GEN-020 | As a Viewer, I want a search box on the feed so that I can find a specific product without scrolling. | FEAT-GEN-020 |
+| STORY-GEN-021 | As a Viewer, I want to combine hashtags so that I can find e.g. `#image #b2b` startups in one click. | FEAT-GEN-021 |
+| STORY-GEN-022 | As a Viewer, I want carousel arrows outside the cover so that the visual reads cleaner. | FEAT-GEN-022 |
+| STORY-GEN-023 | As a Founder, after I authenticate with GitHub I want to pick a repository so that the studio works against real code. | FEAT-GEN-023 |
+| STORY-GEN-024 | As a Founder/Developer, I want the studio to detect existing spec/tests in my repo so that the dashboard imports them automatically. | FEAT-GEN-024 |
+| STORY-GEN-025 | As a Founder, I want the scan status visible in the Repo tab so that I always know whether import or generation is required. | FEAT-GEN-025 |
+
+### 9.3 New use cases (brief)
+
+- **UC-GEN-019 — Add/edit hashtags.** Actor: Founder. Hashtags are normalized (lowercase, `kebab-case`, no `#`). 0..N per startup. Stored as `Startup.hashtags`.
+- **UC-GEN-020 — Search feed.** Case-insensitive substring across `name`, `pitch`, `description` and `hashtags`. Empty query returns all.
+- **UC-GEN-021 — Multi-select filter.** Selecting `tags = [t1, t2]` returns startups whose `hashtags` is a superset of `{t1, t2}` (AND intersection).
+- **UC-GEN-022 — Carousel controls.** Prev/Next live in a wrapper grid `[btn | slide | btn]`, not absolutely positioned on the slide. The slide's rounded `[32px]` border is unobscured.
+- **UC-GEN-023 — Onboarding repo pick.** After successful (mocked) GitHub login, a founder with zero startups is routed to `/onboarding/repo` to pick from a mocked repo list. Picking a repo with a detected spec auto-creates a startup imported from that repo; picking an empty repo routes to the AI Interview.
+- **UC-GEN-024 — Repo scan.** `scanRepo(repo)` returns `{ kind: 'found', specPath, testCount, nodeCount }` or `{ kind: 'partial' }` or `{ kind: 'missing' }`. Deterministic.
+- **UC-GEN-025 — Repo scan widget.** Repo tab inside Startup admin renders the scan result and an "Import detected spec" or "Generate spec" CTA accordingly.
+
+### 9.4 New Functional Requirements
+
+| FR ID | Requirement | UC | Test |
+|---|---|---|---|
+| FR-GEN-110 | `Startup` MUST carry `hashtags: string[]`; hashtags are normalized (lowercased, kebab-cased, no leading `#`). | UC-GEN-019 | TEST-GEN-110 |
+| FR-GEN-111 | Multi-select filter MUST return startups whose hashtags contain ALL selected tags. | UC-GEN-021 | TEST-GEN-111 |
+| FR-GEN-112 | The popular-tags list MUST be sorted by usage frequency, descending. | UC-GEN-021 | TEST-GEN-112 |
+| FR-GEN-120 | Search MUST be a case-insensitive substring match across `name`, `pitch`, `description`, and `hashtags`. | UC-GEN-020 | TEST-GEN-120 |
+| FR-GEN-121 | Empty search query MUST return the input set unchanged. | UC-GEN-020 | TEST-GEN-121 |
+| FR-GEN-130 | Carousel prev/next controls MUST live outside the slide frame (sibling, not descendant). | UC-GEN-022 | covered by visual review (NFR-GEN-006) |
+| FR-GEN-140 | `scanRepo` MUST classify a repo as `found` when both `hasSpec` and `hasTests` are true; `partial` when exactly one is true; `missing` otherwise. | UC-GEN-024 | TEST-GEN-140 |
+| FR-GEN-141 | After a successful login, a session-holder with zero startups MUST be redirected to `/onboarding/repo`. | UC-GEN-023 | TEST-GEN-141 |
+| FR-GEN-142 | Picking a repo with `kind=found` MUST create a startup populated from the repo metadata and route to the Spec workspace. | UC-GEN-023, UC-GEN-024 | TEST-GEN-142 |
+| FR-GEN-143 | Picking a repo with `kind=missing` or `kind=partial` MUST route to a flow that generates a new spec (AI Interview). | UC-GEN-023, UC-GEN-024 | TEST-GEN-143 |
+| FR-GEN-150 | The Repo tab MUST render the live scan result (kind, paths) for the attached repo. | UC-GEN-025 | TEST-GEN-150 |
+
+### 9.5 Updated traceability matrix (additions)
+
+| Feature | Story | UC | FR | Test |
+|---|---|---|---|---|
+| FEAT-GEN-019 | STORY-GEN-019 | UC-GEN-019 | FR-GEN-110 | TEST-GEN-110 |
+| FEAT-GEN-020 | STORY-GEN-020 | UC-GEN-020 | FR-GEN-120..121 | TEST-GEN-120..121 |
+| FEAT-GEN-021 | STORY-GEN-021 | UC-GEN-021 | FR-GEN-111..112 | TEST-GEN-111..112 |
+| FEAT-GEN-022 | STORY-GEN-022 | UC-GEN-022 | FR-GEN-130 | (visual) |
+| FEAT-GEN-023 | STORY-GEN-023 | UC-GEN-023 | FR-GEN-141..143 | TEST-GEN-141..143 |
+| FEAT-GEN-024 | STORY-GEN-024 | UC-GEN-024 | FR-GEN-140 | TEST-GEN-140 |
+| FEAT-GEN-025 | STORY-GEN-025 | UC-GEN-025 | FR-GEN-150 | TEST-GEN-150 |

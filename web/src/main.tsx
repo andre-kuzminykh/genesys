@@ -23,6 +23,7 @@ import { Marketplace } from './ui/screens/Marketplace';
 import { Leaderboard } from './ui/screens/Leaderboard';
 import { Portfolio } from './ui/screens/Portfolio';
 import { Admin } from './ui/screens/Admin';
+import { PickRepo } from './ui/screens/PickRepo';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -33,6 +34,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/denied" element={<Denied />} />
+
+          {/* onboarding (gated, no app layout) */}
+          <Route path="/onboarding/repo" element={<AuthGate><PickRepo /></AuthGate>} />
 
           {/* gated */}
           <Route element={<AuthGate><AppLayout /></AuthGate>}>

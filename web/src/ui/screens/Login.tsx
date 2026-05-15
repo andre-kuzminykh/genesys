@@ -28,6 +28,13 @@ export function Login() {
       nav('/denied', { state: { handle: value } });
       return;
     }
+    // After login: route the user to repo picker if they have no startups yet.
+    const lowered = value.trim().toLowerCase();
+    const mine = state.startups.filter((s) => s.ownerHandle === lowered);
+    if (mine.length === 0) {
+      nav('/onboarding/repo');
+      return;
+    }
     nav(loc.state?.from && loc.state.from !== '/login' ? loc.state.from : '/app');
   };
 

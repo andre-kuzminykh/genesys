@@ -8,6 +8,8 @@ import { createStartup as createStartupAction, attachRepo as attachRepoAction, p
 import { MockAiAnalyst } from '@/ai/analyst';
 import { MockPersonaSimulator } from '@/ai/personas';
 import { validateWeights } from '@/domain/scoring';
+import { reposFor, REPO_TO_STARTUP } from '@/data/mockRepos';
+import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 
 const analyst = new MockAiAnalyst();
 const simulator = new MockPersonaSimulator();
@@ -24,8 +26,14 @@ type Ctx = {
   setSelfInvestPolicy: (p: SelfInvestPolicy) => void;
   setCreditsPerInvestor: (n: number) => void;
   // startup
-  createStartup: (args: { name: string; pitch: string; category: string; description?: string }) =>
+  createStartup: (args: { name: string; pitch: string; category: string; description?: string; hashtags?: string[]; landingUrl?: string; repo?: string }) =>
     | { ok: true; startupId: string }
+    | { ok: false; reason: string };
+  // onboarding / repo scan
+  myRepos: () => MockRepo[];
+  scanMyRepo: (fullName: string) => { repo: MockRepo; result: RepoScanResult } | null;
+  importStartupFromRepo: (fullName: string) =>
+    | { ok: true; startupId: string; alreadyExisted: boolean }
     | { ok: false; reason: string };
   attachRepo: (startupId: string, repo: string) => { ok: true } | { ok: false; reason: string };
   togglePublished: (startupId: string, value: boolean) => void;
@@ -230,6 +238,56 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const remaining = useCallback((handle: string) => remainingCredits(ref.current, ref.current.activeBatchId, handle), []);
 
+  const myRepos = useCallback((): MockRepo[] => {
+    const h = ref.current.session?.handle;
+    return h ? reposFor(h) : [];
+  }, []);
+
+  const scanMyRepo = useCallback((fullName: string): { repo: MockRepo; result: RepoScanResult } | null => {
+    const r = myRepos().find((x) => x.fullName === fullName);
+    if (!r) return null;
+    return { repo: r, result: scanRepo(r) };
+  }, [myRepos]);
+
+  const importStartupFromRepo = useCallback((fullName: string) => {
+    const session = ref.current.session;
+    if (!session) return { ok: false as const, reason: 'NO_SESSION' };
+    const found = reposFor(session.handle).find((x) => x.fullName === fullName);
+    if (!found) return { ok: false as const, reason: 'REPO_NOT_FOUND' };
+
+    // If we already have a startup mapped to this repo, return it (alreadyExisted=true).
+    const mappedId = REPO_TO_STARTUP[fullName];
+    if (mappedId) {
+      const existing = ref.current.startups.find((s) => s.id === mappedId);
+      if (existing && existing.ownerHandle === session.handle) {
+        return { ok: true as const, startupId: existing.id, alreadyExisted: true };
+      }
+    }
+
+    // Otherwise create a fresh startup pre-filled from repo metadata.
+    const [, repoName] = found.fullName.split('/');
+    const name = (repoName ?? found.fullName)
+      .replace(/[-_]/g, ' ')
+      .replace(/\b\w/g, (m) => m.toUpperCase());
+    const r = createStartupAction(ref.current, {
+      batchId: ref.current.activeBatchId,
+      ownerHandle: session.handle,
+      name,
+      pitch: `Imported from ${found.fullName}`,
+      category: 'Imported',
+      hashtags: ['imported', found.language.toLowerCase()],
+      repo: found.fullName,
+    });
+    if (!r.ok) return r;
+    const blankSpec: ProductSpec = {
+      startupId: r.startup.id,
+      nodes: [],
+      architecture: { entities: [], components: [], dataFlow: [] },
+    };
+    setState({ ...r.state, specs: [...r.state.specs, blankSpec] });
+    return { ok: true as const, startupId: r.startup.id, alreadyExisted: false };
+  }, []);
+
   const reset = useCallback(() => setState(resetState()), []);
 
   const value: Ctx = useMemo(() => ({
@@ -240,8 +298,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     createStartup, attachRepo, togglePublished, setAuxScores,
     runAnalystInterview, addNode, editNode, removeNode, linkFrToTest,
     invest, runSimulation,
+    myRepos, scanMyRepo, importStartupFromRepo,
     reset, remaining,
-  }), [state, login, logout, addAllowlistHandle, removeAllowlistHandle, setWeights, setSelfInvestPolicy, setCreditsPerInvestor, createStartup, attachRepo, togglePublished, setAuxScores, runAnalystInterview, addNode, editNode, removeNode, linkFrToTest, invest, runSimulation, reset, remaining]);
+  }), [state, login, logout, addAllowlistHandle, removeAllowlistHandle, setWeights, setSelfInvestPolicy, setCreditsPerInvestor, createStartup, attachRepo, togglePublished, setAuxScores, runAnalystInterview, addNode, editNode, removeNode, linkFrToTest, invest, runSimulation, myRepos, scanMyRepo, importStartupFromRepo, reset, remaining]);
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;
 }

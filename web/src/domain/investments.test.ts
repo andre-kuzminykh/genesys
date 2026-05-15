@@ -20,6 +20,7 @@ function baseState(): AppState {
     name: 'Aurora',
     pitch: 'Neon-fast spec-first startup OS',
     category: 'devtools',
+    hashtags: ['devtools'],
     published: true,
     createdAt: 0,
     techExecution: 60,

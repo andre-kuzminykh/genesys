@@ -121,6 +121,7 @@ export interface Startup {
   category: string;
   description?: string;
   landingUrl?: string;
+  hashtags: string[];
   repo?: string; // owner/repo
   published: boolean;
   createdAt: number;

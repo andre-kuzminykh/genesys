@@ -76,6 +76,7 @@ export function AppLayout() {
         <nav className="mt-5 flex flex-col gap-1 px-3">
           <div className="label px-2 pb-2">workspace</div>
           <NavItem to="/app" icon={<RocketIcon />} label="My Startups" />
+          <NavItem to="/onboarding/repo" icon={<GithubIcon />} label="Import from GitHub" />
           <NavItem to="/app/marketplace" icon={<ShopIcon />} label="Marketplace" />
           <NavItem to="/app/leaderboard" icon={<TrophyIcon />} label="Leaderboard" />
           <NavItem to="/app/portfolio" icon={<CoinIcon />} label="Portfolio" />
