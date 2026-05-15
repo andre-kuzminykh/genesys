@@ -39,7 +39,7 @@ export function Wordmark({
       />
       <span
         className="text-softblue"
-        style={{ letterSpacing: '-0.04em' }}
+        style={{ letterSpacing: '0.02em' }}
       >
         genesys
       </span>
