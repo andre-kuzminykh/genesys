@@ -1022,3 +1022,48 @@ under cards. Also: real GitHub handle should be on the allowlist.
 | FEAT-GEN-027/029 | — | FR-GEN-161 | TEST-GEN-161 |
 | FEAT-GEN-028 | — | FR-GEN-162 | TEST-GEN-162 |
 | FEAT-GEN-033 | — | FR-GEN-163 | TEST-GEN-163 |
+
+---
+
+## 11. Landing visual pass v0.5 (added 2026-05-15)
+
+User feedback after v0.4: logo too big and bg didn't match the logo image
+hue; the blinking cursor needed to be in front of the logo; the featured
+carousel card had too much content (description + buttons + upvote) — user
+wanted a clean cover-only card with the title overlaid; arrows on the
+carousel were still wrapped in circular bg, user wanted plain side
+chevrons; "Visit" button should disappear from the public listing —
+only "Open" should remain; upvote pill border was visually noisy and the
+counter should sit naked next to the up-arrow.
+
+### 11.1 New features
+
+| ID | Feature | Priority |
+|---|---|---|
+| FEAT-GEN-035 | Page background hue matches the wordmark image (`#0B0F26`, blue-tinted dark) | Must |
+| FEAT-GEN-036 | Header wordmark size set to `md`; blinking cursor lives in front of the wordmark even in image mode | Must |
+| FEAT-GEN-037 | Featured carousel card is cover-only with title overlay + vignette; no description, no buttons, no upvote inside | Must |
+| FEAT-GEN-038 | Featured carousel prev/next as plain chevrons on the LEFT and RIGHT of the card (no circular button, no background) | Must |
+| FEAT-GEN-039 | List card action row: only "Open" remains; "Visit" / "Visit landing" removed from public listing | Must |
+| FEAT-GEN-040 | Upvote control on list cards renders as a plain `↑ N` (up-arrow + count) with no border/pill | Must |
+| FEAT-GEN-041 | List uses a single-column stack (was 2-col grid) so each card is full-width and the cover dominates | Must |
+
+### 11.2 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-170 | Wordmark MUST render the blinking cursor in front of the wordmark in both image and CSS-fallback modes when `withCursor` is true. | TEST-GEN-170 |
+| FR-GEN-171 | The public Landing list cards MUST NOT render a "Visit" or "Visit landing" action. | TEST-GEN-171 |
+| FR-GEN-172 | The Featured carousel card MUST NOT render an in-card description, action row, or upvote. | TEST-GEN-172 |
+| FR-GEN-173 | The carousel prev/next controls MUST be plain chevrons positioned outside the card (left and right), with no circular button or surface background. | TEST-GEN-173 |
+| FR-GEN-174 | Upvote on list cards MUST render with no border, only `↑` + count, with color-only hover state. | TEST-GEN-174 |
+
+### 11.3 Updated traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| FEAT-GEN-036 | — | FR-GEN-170 | TEST-GEN-170 |
+| FEAT-GEN-037 | — | FR-GEN-172 | TEST-GEN-172 |
+| FEAT-GEN-038 | — | FR-GEN-173 | (visual) |
+| FEAT-GEN-039 | — | FR-GEN-171 | TEST-GEN-171 |
+| FEAT-GEN-040 | — | FR-GEN-174 | (visual) |

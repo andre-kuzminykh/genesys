@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon } from '../design/Icon';
+import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from '../design/Icon';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
@@ -169,60 +169,64 @@ function HashChips({ tags, onClick, limit = 6, dense = false }: { tags: string[]
   );
 }
 
-// ---------- featured card (big, no upvote inside) ----------
+// ---------- featured card (image + title overlay, no body, no upvote, no Visit) ----------
 
 function FeaturedCard({
-  startup, score, onOpen, onTagClick,
+  startup, onOpen,
 }: {
   startup: Startup;
-  score: Score;
   onOpen: () => void;
-  onTagClick: (t: string) => void;
 }) {
+  const cover = coverFor(startup.id);
   return (
-    <article className="bento overflow-hidden">
-      <button onClick={onOpen} className="block w-full text-left" aria-label={`Open ${startup.name}`}>
-        <CoverArea
-          name={startup.name}
-          height={340}
-          badge={
-            <span className="rounded-full bg-base/85 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30 backdrop-blur">
-              <SparkleIcon size={10} className="inline mr-1" /> Featured
-            </span>
-          }
-        />
-      </button>
+    <button
+      onClick={onOpen}
+      aria-label={`Open ${startup.name}`}
+      className="bento relative block w-full overflow-hidden text-left"
+    >
+      <div
+        className="relative h-[380px] w-full"
+        style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+      >
+        {/* Soft giant letter as decorative artwork */}
+        <div
+          className="pointer-events-none absolute -bottom-12 -left-6 select-none font-display font-extrabold leading-none text-ink/20"
+          style={{ fontSize: 360 }}
+        >
+          {startup.name.slice(0, 1)}
+        </div>
 
-      <div className="p-7">
-        <h2 className="font-display text-3xl font-extrabold leading-tight">{startup.name}</h2>
-        <div className="mt-3"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} /></div>
-        <p className="mt-4 text-base text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
+        {/* Vignette so the white overlay text stays legible at the edges */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 [background:radial-gradient(120%_70%_at_50%_30%,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-surfaceLight pt-5">
-          <div className="display-mono">readiness {Math.round(score.readiness)}</div>
-          <div className="flex items-center gap-2">
-            <button onClick={onOpen} className="ghost-button">
-              Open <ArrowRight16 />
-            </button>
-            {startup.landingUrl ? (
-              <a href={startup.landingUrl} target="_blank" rel="noreferrer" className="neon-button">
-                Visit landing <ArrowRight16 />
-              </a>
-            ) : null}
-          </div>
+        {/* Featured pill */}
+        <div className="absolute top-5 left-5">
+          <span className="rounded-full bg-base/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30 backdrop-blur">
+            <SparkleIcon size={10} className="inline mr-1" /> Featured
+          </span>
+        </div>
+
+        {/* Title overlay */}
+        <div className="absolute bottom-0 left-0 right-0 p-7">
+          <h2 className="font-display text-5xl font-extrabold leading-[1.05] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            {startup.name}
+          </h2>
+          <p className="mt-3 max-w-2xl text-white/85 line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+            {startup.pitch}
+          </p>
         </div>
       </div>
-    </article>
+    </button>
   );
 }
 
 // ---------- carousel of featured cards ----------
 
 function FeaturedCarousel({
-  items, onTagClick, onOpen,
+  items, onOpen,
 }: {
   items: { startup: Startup; score: Score }[];
-  onTagClick: (t: string) => void;
   onOpen: (id: string) => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -244,41 +248,40 @@ function FeaturedCarousel({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="flex items-center justify-center gap-3 pb-3">
+      {/* arrows OUTSIDE the card on the sides — plain chevrons, no circle, no bg */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 md:gap-5">
         <button
           onClick={() => setIndex((i) => (i - 1 + total) % total)}
           aria-label="Previous"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
+          className="text-textsec transition hover:text-neon-500"
         >
-          <span className="block rotate-180"><ArrowRight16 /></span>
+          <ChevronLeftIcon size={36} />
         </button>
 
-        <div className="flex items-center gap-1.5">
-          {items.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setIndex(i)}
-              aria-label={`Go to slide ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all ${i === index ? 'w-8 bg-neon-500' : 'w-2 bg-surfaceLight hover:bg-textsec'}`}
-            />
-          ))}
-        </div>
+        <FeaturedCard
+          startup={current.startup}
+          onOpen={() => onOpen(current.startup.id)}
+        />
 
         <button
           onClick={() => setIndex((i) => (i + 1) % total)}
           aria-label="Next"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
+          className="text-textsec transition hover:text-neon-500"
         >
-          <ArrowRight16 />
+          <ChevronRightIcon size={36} />
         </button>
       </div>
 
-      <FeaturedCard
-        startup={current.startup}
-        score={current.score}
-        onTagClick={onTagClick}
-        onOpen={() => onOpen(current.startup.id)}
-      />
+      <div className="mt-4 flex items-center justify-center gap-1.5">
+        {items.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            className={`h-1.5 rounded-full transition-all ${i === index ? 'w-8 bg-neon-500' : 'w-2 bg-surfaceLight hover:bg-textsec'}`}
+          />
+        ))}
+      </div>
     </section>
   );
 }
@@ -298,38 +301,33 @@ function ListCard({
   return (
     <article className="bento overflow-hidden">
       <button onClick={onOpen} className="block w-full text-left" aria-label={`Open ${startup.name}`}>
-        <CoverArea name={startup.name} height={220} />
+        <CoverArea name={startup.name} height={240} />
       </button>
 
-      <div className="p-6">
+      <div className="p-7">
         <h3
           className="cursor-pointer font-display text-2xl font-extrabold leading-tight hover:text-neon-500"
           onClick={onOpen}
         >
           {startup.name}
         </h3>
-        <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={5} dense /></div>
-        <p className="mt-3 text-sm text-textsec leading-relaxed line-clamp-4">{startup.description ?? startup.pitch}</p>
+        <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
+        <p className="mt-4 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
+          {/* Upvote — plain arrow + number, no border/pill */}
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
-            className={`group inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-base px-3 py-1.5 transition hover:border-neon-500/40 hover:bg-neon-500/[0.06] ${popping ? 'animate-upvotePop' : ''}`}
+            className={`group inline-flex items-center gap-1.5 text-textsec transition hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
             aria-label="Upvote"
           >
-            <UpArrow size={16} className="text-textsec group-hover:text-neon-500" />
-            <span className="font-display text-base font-extrabold leading-none">{upvotes}</span>
+            <UpArrow size={18} />
+            <span className="font-display text-lg font-extrabold leading-none">{upvotes}</span>
           </button>
-          <div className="flex items-center gap-2">
-            <button onClick={onOpen} className="ghost-button !py-2 !px-4 text-sm">
-              Open <ArrowRight16 />
-            </button>
-            {startup.landingUrl ? (
-              <a href={startup.landingUrl} target="_blank" rel="noreferrer" className="neon-button !py-2 !px-4 text-sm">
-                Visit <ArrowRight16 />
-              </a>
-            ) : null}
-          </div>
+
+          <button onClick={onOpen} className="ghost-button !py-2 !px-5 text-sm">
+            Open <ArrowRight16 />
+          </button>
         </div>
       </div>
     </article>
@@ -599,7 +597,7 @@ export function Landing() {
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="xl" />
+          <Wordmark size="md" />
         </Link>
 
         <div className="flex-1" />
@@ -634,11 +632,10 @@ export function Landing() {
       <FeaturedCarousel
         items={featured}
         onOpen={openById}
-        onTagClick={(t) => setTags((cur) => toggleTag(cur, t))}
       />
 
-      <main className="mx-auto max-w-5xl px-6 pb-16 pt-8">
-        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <main className="mx-auto max-w-3xl px-6 pb-16 pt-10">
+        <ul className="flex flex-col gap-6">
           {list.map(({ startup }) => (
             <li key={startup.id}>
               <ListCard
@@ -652,7 +649,7 @@ export function Landing() {
             </li>
           ))}
           {list.length === 0 ? (
-            <li className="bento p-6 text-textsec md:col-span-2">
+            <li className="bento p-6 text-textsec">
               <SparkleIcon size={14} className="inline mr-1 text-neon-500" /> Nothing matches — clear filters or change the query.
             </li>
           ) : null}

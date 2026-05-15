@@ -4,10 +4,10 @@
 
 @layer base {
   :root, html[data-theme="dark"] {
-    --c-base:         11  13  20;
-    --c-surface:      26  29  39;
-    --c-surfaceLight: 42  46  61;
-    --c-textsec:      160 165 181;
+    --c-base:         11  15  38;
+    --c-surface:      22  27  52;
+    --c-surfaceLight: 38  46  74;
+    --c-textsec:      160 167 195;
     --c-text:         255 255 255;
   }
   html[data-theme="light"] {
