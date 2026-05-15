@@ -81,7 +81,7 @@ export function seedState(): AppState {
     id: 'B1',
     name: 'GENESYS-001 · May Cohort',
     allowlist: ['andre-kuzminykh', 'admin', 'alice', 'bob', 'carol', 'dmitry', 'eva', 'frank', 'grace', 'henry', 'ivy', 'jack'],
-    creditsPerInvestor: 1000,
+    creditsPerInvestor: 100000,
     selfInvestPolicy: 'FORBIDDEN' as const,
     weights: DEFAULT_WEIGHTS,
     createdAt: Date.now(),

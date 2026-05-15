@@ -1025,6 +1025,44 @@ under cards. Also: real GitHub handle should be on the allowlist.
 
 ---
 
+## 13. Invest via Landing wallet (added 2026-05-15)
+
+The user can invest into a published startup directly from the public
+Landing's detail dialog. Wallet UX:
+
+- Every allowlisted member gets a **$100,000** demo wallet on first
+  login (was 1,000 "Genesis Credits"). Stored on `batch.creditsPerInvestor`.
+- The wallet pill `$ NNN,NNN` shows in the Landing header for the
+  authenticated user.
+- The card detail dialog now contains an "Invest" button (dollar icon).
+  Clicking it expands an inline form with:
+  - amount input (digits-only)
+  - quick-pick chips: $500, $1,000, $5,000, $10,000, max
+  - "After: $X" projected wallet remainder
+  - Cancel / Confirm
+- Anonymous users see "Sign in to invest" → /login instead.
+
+The underlying logic re-uses the existing `invest()` reducer
+(`FR-GEN-030..033` from §2.5), only the default budget value and the
+displayed unit change.
+
+### 13.1 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-190 | Default `batch.creditsPerInvestor` MUST be 100,000 (interpreted as USD by the UI). | TEST-GEN-190 |
+| FR-GEN-191 | The Landing header MUST display the current wallet balance as `$N,NNN` for the authenticated user, hidden for anonymous visitors. | TEST-GEN-190 |
+| FR-GEN-192 | The detail dialog Invest control MUST be a single button labelled "Invest" with a dollar icon; clicking it MUST reveal an amount form with the quick-pick chips and a Confirm action. | TEST-GEN-190 |
+| FR-GEN-193 | Anonymous visitors clicking Invest MUST instead see a "Sign in to invest" CTA linking to /login. | (covered by detail-dialog conditional) |
+
+### 13.2 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Invest with $100k wallet | UC-GEN-011 | FR-GEN-190..193 | TEST-GEN-190 |
+
+---
+
 ## 12. Narrow demo MVP — single flow (added 2026-05-15)
 
 User decision: collapse the demo to one happy path so we can validate the

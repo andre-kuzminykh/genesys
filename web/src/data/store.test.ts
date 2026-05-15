@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { loadState } from './store';
 import { seedState } from './seed';
 
-const KEY_CURRENT = 'genesys:v0.4';
+const KEY_CURRENT = 'genesys:v0.5';
 const KEY_V01 = 'genesys:v0.1';
 const KEY_LEGACY = 'genesis:v0.1';
 

@@ -144,6 +144,12 @@ export const CoinIcon = ({ size = 16, ...p }: IconProps) => (
   </svg>
 );
 
+export const DollarIcon = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" />
+  </svg>
+);
+
 export const ChevronLeftIcon = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size)} {...p}>
     <path d="M15 18l-6-6 6-6" />

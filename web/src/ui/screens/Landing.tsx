@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon } from '../design/Icon';
+import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
+import { remainingCredits } from '@/domain/investments';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
@@ -401,6 +402,10 @@ function HashtagBar({
 
 // ---------- detail dialog ----------
 
+function fmtUSD(n: number): string {
+  return '$' + n.toLocaleString('en-US');
+}
+
 function DetailDialog({
   startup, score, upvotes, popping,
   onClose, onNext, onPrev, onUpvote, index, total, onTagClick,
@@ -417,9 +422,39 @@ function DetailDialog({
   total: number;
   onTagClick: (t: string) => void;
 }) {
+  const { state, invest } = useStore();
+  const me = state.session?.handle;
+  const wallet = me ? remainingCredits(state, state.activeBatchId, me) : null;
+  const [investOpen, setInvestOpen] = useState(false);
+  const [amount, setAmount] = useState('1000');
+  const [investErr, setInvestErr] = useState<string | null>(null);
+
+  function submitInvest() {
+    setInvestErr(null);
+    const amt = Math.floor(Number(amount));
+    if (!Number.isFinite(amt) || amt <= 0) { setInvestErr('Enter a positive amount.'); return; }
+    const r = invest(startup.id, amt);
+    if (!r.ok) {
+      const m: Record<string, string> = {
+        INSUFFICIENT_CREDITS: 'Not enough budget in your wallet.',
+        SELF_INVEST_FORBIDDEN: 'You cannot invest in your own startup.',
+        INVALID_AMOUNT: 'Enter a positive amount.',
+        STARTUP_NOT_PUBLISHED: 'This startup is not published yet.',
+        NO_SESSION: 'Sign in to invest.',
+      };
+      setInvestErr(m[r.reason] ?? r.reason);
+      return;
+    }
+    setInvestOpen(false);
+    setAmount('1000');
+  }
+
   const cover = coverFor(startup.id);
   const dialogRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { dialogRef.current?.scrollTo({ top: 0 }); }, [startup.id]);
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0 });
+  }, [startup.id]);
 
   return (
     <div
@@ -474,10 +509,6 @@ function DetailDialog({
               <h2 className="font-display text-3xl font-extrabold">{startup.name}</h2>
               <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={12} /></div>
             </div>
-
-            <a href={startup.landingUrl ?? '#'} target="_blank" rel="noreferrer" className="neon-button text-base">
-              Visit landing <ArrowRight16 />
-            </a>
           </div>
 
           <p className="mt-5 font-display text-lg leading-snug">{startup.pitch}</p>
@@ -509,14 +540,107 @@ function DetailDialog({
           </div>
         </div>
 
-        <div className="px-7 pb-7 pt-7 flex flex-wrap items-center justify-between gap-3">
-          <div className="display-mono">←/→ to browse · esc to close</div>
-          <div className="flex gap-2">
-            <Link to="/login" className="ghost-button"><GithubIcon /> Continue with GitHub</Link>
-            <a href={startup.landingUrl ?? '#'} target="_blank" rel="noreferrer" className="neon-button">
-              Visit landing <ArrowRight16 />
-            </a>
+        {/* Invest block */}
+        <div className="px-7 pt-7">
+          <div className="rounded-2xl border border-surfaceLight bg-base p-5">
+            {!me ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-display text-lg font-bold">Sign in to invest</div>
+                  <div className="text-sm text-textsec">Every allowlisted member gets a $100,000 demo budget.</div>
+                </div>
+                <Link to="/login" className="neon-button">
+                  <GithubIcon /> Continue with GitHub
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-12 w-12 place-items-center rounded-2xl bg-neon-500 text-ink shadow-neon">
+                      <DollarIcon size={22} />
+                    </div>
+                    <div>
+                      <div className="display-mono">your wallet</div>
+                      <div className="font-display text-2xl font-extrabold leading-tight">{fmtUSD(wallet ?? 0)}</div>
+                    </div>
+                  </div>
+                  {!investOpen ? (
+                    <button
+                      onClick={() => { setInvestErr(null); setInvestOpen(true); }}
+                      className="neon-button"
+                    >
+                      <DollarIcon /> Invest
+                    </button>
+                  ) : null}
+                </div>
+
+                {investOpen ? (
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); submitInvest(); }}
+                    className="mt-4 space-y-3"
+                  >
+                    <div className="label">Amount, USD</div>
+                    <div className="flex items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
+                      <DollarIcon className="text-textsec" />
+                      <input
+                        value={amount}
+                        onChange={(e) => { setAmount(e.target.value.replace(/[^0-9]/g, '')); setInvestErr(null); }}
+                        inputMode="numeric"
+                        autoFocus
+                        className="flex-1 bg-transparent outline-none placeholder:text-textsec"
+                        placeholder="1000"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {[500, 1000, 5000, 10000].filter((v) => v <= (wallet ?? 0)).map((v) => (
+                        <button
+                          type="button"
+                          key={v}
+                          onClick={() => setAmount(String(v))}
+                          className="rounded-full border border-surfaceLight bg-base px-3 py-1 text-xs font-bold uppercase tracking-wider text-textsec hover:text-neon-500 hover:border-neon-500/40"
+                        >
+                          {fmtUSD(v)}
+                        </button>
+                      ))}
+                      {(wallet ?? 0) > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setAmount(String(wallet))}
+                          className="rounded-full border border-surfaceLight bg-base px-3 py-1 text-xs font-bold uppercase tracking-wider text-textsec hover:text-neon-500 hover:border-neon-500/40"
+                        >
+                          max
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {investErr ? (
+                      <div className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{investErr}</div>
+                    ) : null}
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <div className="text-xs text-textsec">
+                        After: <span className="font-mono text-white">{fmtUSD(Math.max(0, (wallet ?? 0) - Math.max(0, Math.floor(Number(amount) || 0))))}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { setInvestOpen(false); setInvestErr(null); }} className="ghost-button !py-2 !px-4 text-sm">
+                          Cancel
+                        </button>
+                        <button type="submit" className="neon-button !py-2 !px-5 text-sm">
+                          <DollarIcon size={14} /> Confirm
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                ) : null}
+              </>
+            )}
           </div>
+        </div>
+
+        <div className="px-7 pb-7 pt-5">
+          <div className="display-mono">←/→ to browse · esc to close</div>
         </div>
       </div>
     </div>
@@ -609,6 +733,9 @@ export function Landing() {
 
   const open = openIndex !== null ? list[openIndex] : null;
 
+  const myHandle = state.session?.handle;
+  const myWallet = myHandle ? remainingCredits(state, state.activeBatchId, myHandle) : null;
+
   return (
     <div className="min-h-screen">
       <header className="mx-auto grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
@@ -634,8 +761,18 @@ export function Landing() {
         </div>
 
         <div className="flex items-center gap-3">
+          {myHandle ? (
+            <div className="flex h-11 items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 font-display font-extrabold">
+              <DollarIcon size={14} className="text-neon-500" />
+              <span>{fmtUSD(myWallet ?? 0)}</span>
+            </div>
+          ) : null}
           <ThemeToggle />
-          <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
+          {myHandle ? (
+            <Link to="/onboarding/repo" className="ghost-button shrink-0"><GithubIcon /> @{myHandle}</Link>
+          ) : (
+            <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
+          )}
         </div>
       </header>
 
