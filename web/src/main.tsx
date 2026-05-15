@@ -25,6 +25,7 @@ import { Leaderboard } from './ui/screens/Leaderboard';
 import { Portfolio } from './ui/screens/Portfolio';
 import { Admin } from './ui/screens/Admin';
 import { PickRepo } from './ui/screens/PickRepo';
+import { ComingSoon } from './ui/screens/ComingSoon';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
           {/* onboarding (gated, no app layout) */}
           <Route path="/onboarding/repo" element={<AuthGate><PickRepo /></AuthGate>} />
+          <Route path="/coming-soon" element={<AuthGate><ComingSoon /></AuthGate>} />
 
           {/* gated */}
           <Route element={<AuthGate><AppLayout /></AuthGate>}>

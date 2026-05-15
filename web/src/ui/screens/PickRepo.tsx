@@ -3,12 +3,12 @@ import { useMemo } from 'react';
 import { useStore } from '../AppStore';
 import { Bento, BentoHeader } from '../components/Bento';
 import { Chip } from '../components/Chip';
-import { ArrowRightIcon, CheckIcon, GithubIcon, SparkleIcon, XIcon } from '../design/Icon';
 import { Wordmark } from '../components/Wordmark';
+import { ArrowRightIcon, CheckIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 
 export function PickRepo() {
-  const { state, myRepos, importStartupFromRepo } = useStore();
+  const { state, myRepos } = useStore();
   const nav = useNavigate();
   const repos = myRepos();
   const me = state.session?.handle;
@@ -18,19 +18,33 @@ export function PickRepo() {
     [repos],
   );
 
-  const start = (fullName: string, scan: RepoScanResult) => {
-    const r = importStartupFromRepo(fullName);
-    if (!r.ok) { alert(r.reason); return; }
+  const continueWith = (repo: MockRepo, scan: RepoScanResult) => {
     if (scan.kind === 'found') {
-      nav(`/app/startups/${r.startupId}/spec`);
+      nav('/coming-soon', {
+        state: {
+          flow: 'import',
+          repo: repo.fullName,
+        },
+      });
     } else {
-      nav(`/app/startups/${r.startupId}/interview`);
+      // Derive a friendly startup name from the repo (e.g. "alice/aurora" → "Aurora").
+      const [, repoName] = repo.fullName.split('/');
+      const startupName = (repoName ?? repo.fullName)
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (m) => m.toUpperCase());
+      nav('/coming-soon', {
+        state: {
+          flow: 'scratch',
+          repo: repo.fullName,
+          startupName,
+        },
+      });
     }
   };
 
   return (
     <div className="relative min-h-screen">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-6">
+      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
         <Link to="/" aria-label="Genesys home">
           <Wordmark size="md" />
         </Link>
@@ -42,29 +56,20 @@ export function PickRepo() {
         <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight">Pick a repository</h1>
         <p className="mt-3 text-textsec">
           We'll scan it for <code className="font-mono text-neon-500">/genesys/spec</code> and
-          <code className="font-mono text-neon-500"> /genesys/tests</code>. If found, the dashboard
-          imports them; otherwise we'll generate a fresh spec via the AI Analyst.
+          <code className="font-mono text-neon-500"> /genesys/tests</code>. If they're there, we'll
+          import them. If not — start from scratch with one click.
         </p>
 
         <ul className="mt-7 space-y-3">
           {scans.map(({ repo, scan }) => (
-            <RepoRow key={repo.fullName} repo={repo} scan={scan} onStart={() => start(repo.fullName, scan)} />
+            <RepoRow key={repo.fullName} repo={repo} scan={scan} onPick={() => continueWith(repo, scan)} />
           ))}
           {scans.length === 0 ? (
             <li className="bento p-6 text-textsec">
-              No repositories on this account yet. <Link to="/app/new" className="text-neon-500 underline">Skip — create from scratch</Link>.
+              No repositories on this account yet.
             </li>
           ) : null}
         </ul>
-
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-          <div className="display-mono">
-            tip: any handle on the allowlist has demo repos. real GitHub OAuth ships in V1.
-          </div>
-          <Link to="/app/new" className="ghost-button">
-            <SparkleIcon size={12} /> Skip — create from scratch
-          </Link>
-        </div>
       </section>
     </div>
   );
@@ -73,11 +78,11 @@ export function PickRepo() {
 function RepoRow({
   repo,
   scan,
-  onStart,
+  onPick,
 }: {
   repo: MockRepo;
   scan: RepoScanResult;
-  onStart: () => void;
+  onPick: () => void;
 }) {
   return (
     <li className="bento p-5 transition hover:border-neon-500/30">
@@ -98,7 +103,7 @@ function RepoRow({
           <ScanLine scan={scan} />
         </div>
 
-        <ActionButton scan={scan} onClick={onStart} />
+        <PickButton scan={scan} onClick={onPick} />
       </div>
     </li>
   );
@@ -110,7 +115,7 @@ function ScanLine({ scan }: { scan: RepoScanResult }) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Chip tone="green"><CheckIcon size={10} /> spec found</Chip>
         <Chip tone="green"><CheckIcon size={10} /> tests found</Chip>
-        <span className="text-xs text-textsec">≈ {scan.nodeCountHint} spec nodes detected at <code className="font-mono">{scan.specPath}</code></span>
+        <span className="text-xs text-textsec">≈ {scan.nodeCountHint} spec nodes at <code className="font-mono">{scan.specPath}</code></span>
       </div>
     );
   }
@@ -123,7 +128,7 @@ function ScanLine({ scan }: { scan: RepoScanResult }) {
         <Chip tone={scan.testsPath ? 'green' : 'amber'}>
           {scan.testsPath ? <CheckIcon size={10} /> : <XIcon size={10} />} tests
         </Chip>
-        <span className="text-xs text-textsec">we'll fill the gap via the AI Analyst</span>
+        <span className="text-xs text-textsec">start from scratch — we'll fill the gap</span>
       </div>
     );
   }
@@ -131,22 +136,22 @@ function ScanLine({ scan }: { scan: RepoScanResult }) {
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <Chip tone="amber"><XIcon size={10} /> no spec</Chip>
       <Chip tone="amber"><XIcon size={10} /> no tests</Chip>
-      <span className="text-xs text-textsec">we'll generate a fresh spec via the AI Analyst</span>
+      <span className="text-xs text-textsec">start from scratch — we'll bootstrap a fresh spec</span>
     </div>
   );
 }
 
-function ActionButton({ scan, onClick }: { scan: RepoScanResult; onClick: () => void }) {
+function PickButton({ scan, onClick }: { scan: RepoScanResult; onClick: () => void }) {
   if (scan.kind === 'found') {
     return (
       <button onClick={onClick} className="neon-button shrink-0">
-        Import spec <ArrowRightIcon />
+        Open dashboard <ArrowRightIcon />
       </button>
     );
   }
   return (
-    <button onClick={onClick} className="sky-button shrink-0">
-      Generate spec <ArrowRightIcon />
+    <button onClick={onClick} className="neon-button shrink-0">
+      <RocketIcon /> Start from scratch
     </button>
   );
 }

@@ -1,16 +1,13 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from './AppStore';
 import { Avatar } from './components/Avatar';
-import { Wordmark, WordmarkMark } from './components/Wordmark';
+import { Wordmark } from './components/Wordmark';
 import {
   ChartIcon,
   CoinIcon,
   GithubIcon,
-  RocketIcon,
   RouteIcon,
   ShieldIcon,
-  ShopIcon,
-  TrophyIcon,
 } from './design/Icon';
 import { useMemo } from 'react';
 import { remainingCredits } from '@/domain/investments';
@@ -70,11 +67,7 @@ export function AppLayout() {
 
         <nav className="mt-5 flex flex-col gap-1 px-3">
           <div className="label px-2 pb-2">workspace</div>
-          <NavItem to="/app" icon={<RocketIcon />} label="My Startups" />
-          <NavItem to="/onboarding/repo" icon={<GithubIcon />} label="Import from GitHub" />
-          <NavItem to="/app/marketplace" icon={<ShopIcon />} label="Marketplace" />
-          <NavItem to="/app/leaderboard" icon={<TrophyIcon />} label="Leaderboard" />
-          <NavItem to="/app/portfolio" icon={<CoinIcon />} label="Portfolio" />
+          <NavItem to="/onboarding/repo" icon={<GithubIcon />} label="Pick a repo" />
           {isAdmin ? (
             <>
               <div className="label px-2 pb-2 pt-4">admin</div>

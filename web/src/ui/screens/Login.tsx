@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
 import { Wordmark } from '../components/Wordmark';
 import { GithubIcon, LockIcon } from '../design/Icon';
 
 export function Login() {
-  const { login, state } = useStore();
+  const { login } = useStore();
   const nav = useNavigate();
-  const loc = useLocation() as { state?: { from?: string } };
   const [handle, setHandle] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -24,13 +23,8 @@ export function Login() {
       nav('/denied', { state: { handle: value } });
       return;
     }
-    const lowered = value.trim().toLowerCase();
-    const mine = state.startups.filter((s) => s.ownerHandle === lowered);
-    if (mine.length === 0) {
-      nav('/onboarding/repo');
-      return;
-    }
-    nav(loc.state?.from && loc.state.from !== '/login' ? loc.state.from : '/app');
+    // For the demo we always route to the repo picker after auth.
+    nav('/onboarding/repo');
   };
 
   return (

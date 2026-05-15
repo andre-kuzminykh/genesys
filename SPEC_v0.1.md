@@ -1025,6 +1025,51 @@ under cards. Also: real GitHub handle should be on the allowlist.
 
 ---
 
+## 12. Narrow demo MVP — single flow (added 2026-05-15)
+
+User decision: collapse the demo to one happy path so we can validate the
+end-to-end experience without distractions.
+
+### 12.1 The single supported flow
+
+1. **Public Landing** — visitors browse the cohort cards and open details.
+2. **Login with GitHub (mocked)** — handle on the allowlist accepted.
+3. **Repo picker** at `/onboarding/repo`:
+   - Each mocked repo is scanned for `/genesys/spec` and `/genesys/tests`.
+   - Found → CTA "Open dashboard" (neon button + right arrow).
+   - Partial / Missing → CTA **"Start from scratch"** with the **rocket
+     icon** at the front of the label.
+4. **Both CTAs route to `/coming-soon`** for this iteration.
+   - `/coming-soon` shows a friendly "we'll launch this soon" placeholder
+     with a floating rocket, a "Pick another repo" link, and a "Browse the
+     cohort" link to the public Landing.
+
+### 12.2 Out of scope for this iteration
+
+All previously-built screens still exist (Dashboard, Spec workspace,
+Marketplace, Leaderboard, Portfolio, Admin, etc.) but they are **not
+reachable through normal navigation**. The sidebar now exposes only
+"Pick a repo" and (for admins) "Console". Direct URLs still work, but
+the demo script does not depend on them.
+
+### 12.3 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-180 | After successful allowlist login, the user MUST be routed to `/onboarding/repo` (no exceptions). | TEST-GEN-180 |
+| FR-GEN-181 | Picking a repo with scan kind `found` MUST navigate to `/coming-soon` with `state.flow = 'import'` and the repo full name. | TEST-GEN-181 |
+| FR-GEN-182 | Picking a repo with scan kind `partial` or `missing` MUST navigate to `/coming-soon` with `state.flow = 'scratch'`, the repo full name, and a derived startup name. The CTA MUST be labelled "Start from scratch" and display the rocket icon. | TEST-GEN-182 |
+| FR-GEN-183 | `/coming-soon` MUST render the message "We'll launch this soon." and provide a "Pick another repo" link back to `/onboarding/repo`. | TEST-GEN-183 |
+| FR-GEN-184 | The Founder sidebar MUST expose only "Pick a repo" and (for admins) "Console". Other entries (My Startups, Marketplace, Leaderboard, Portfolio) MUST be hidden. | (visual) |
+
+### 12.4 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Demo MVP — single flow | UC-GEN-023, UC-GEN-024 | FR-GEN-180..184 | TEST-GEN-180..183 |
+
+---
+
 ## 11.5. Landing visual pass v0.5.1 (added 2026-05-15)
 
 Tightening pass on v0.5:
