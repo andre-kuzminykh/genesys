@@ -4,9 +4,9 @@
 
 @layer base {
   :root, html[data-theme="dark"] {
-    --c-base:         11  15  38;
-    --c-surface:      22  27  52;
-    --c-surfaceLight: 38  46  74;
+    --c-base:          6   9  19;
+    --c-surface:      18  22  36;
+    --c-surfaceLight: 34  40  58;
     --c-textsec:      160 167 195;
     --c-text:         255 255 255;
   }
@@ -53,6 +53,13 @@
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-textsec)); }
+}
+
+/* Restore font-size semantics for `text-base` (Tailwind's default 1rem).
+   Adding colors.base in tailwind.config promoted text-base to mean "text colour",
+   which broke inputs and other places that expect 1rem. */
+@layer utilities {
+  .text-base { font-size: 1rem; line-height: 1.5rem; }
 }
 
 @layer components {

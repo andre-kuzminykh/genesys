@@ -104,7 +104,7 @@ export function CreateStartup() {
                   onClick={() => setCategory(c)}
                   className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
                     category === c
-                      ? 'border-neon-500 bg-neon-500 text-base'
+                      ? 'border-neon-500 bg-neon-500 text-ink'
                       : 'border-surfaceLight bg-surface text-textsec hover:text-white'
                   }`}
                 >
@@ -125,7 +125,7 @@ export function CreateStartup() {
                     type="button"
                     key={t}
                     onClick={() => removeTag(t)}
-                    className="inline-flex items-center gap-1 rounded-full bg-neon-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-base hover:bg-neon-400"
+                    className="inline-flex items-center gap-1 rounded-full bg-neon-500 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-ink hover:bg-neon-400"
                   >
                     #{t} <XIcon size={10} />
                   </button>

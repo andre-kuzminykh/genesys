@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
-import { Chip } from '../components/Chip';
-import { Avatar } from '../components/Avatar';
 import { Wordmark } from '../components/Wordmark';
-import { GithubIcon, LockIcon, ShieldIcon } from '../design/Icon';
+import { GithubIcon, LockIcon } from '../design/Icon';
 
 export function Login() {
   const { login, state } = useStore();
@@ -13,9 +11,6 @@ export function Login() {
   const loc = useLocation() as { state?: { from?: string } };
   const [handle, setHandle] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  const activeBatch = state.batches.find((b) => b.id === state.activeBatchId);
-  const suggested = activeBatch?.allowlist ?? [];
 
   const submit = (h?: string) => {
     const value = (h ?? handle).trim();
@@ -50,37 +45,6 @@ export function Login() {
             <br />
             <span className="text-neon-500">GitHub only.</span>
           </h1>
-          <p className="mt-5 max-w-md text-textsec">
-            Genesys Studio uses GitHub as the single source of identity. For this demo cohort,
-            only allowlisted handles can enter. Spec, repo, simulation and leaderboard all live
-            behind one trust boundary.
-          </p>
-
-          <Bento className="mt-8" padding="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldIcon className="text-softblue" />
-                <div className="font-display text-base font-bold">Allowlist preview</div>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {suggested.map((h) => (
-                <button
-                  key={h}
-                  onClick={() => { setHandle(h); submit(h); }}
-                  className="group flex items-center gap-2 rounded-2xl border border-surfaceLight bg-base px-2.5 py-1.5 text-sm transition hover:border-neon-500/40 hover:bg-neon-500/[0.06]"
-                  title="Click to login as this handle"
-                >
-                  <Avatar seed={h} size={22} />
-                  <span className="font-mono text-xs">@{h}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-textsec">
-              Demo shortcut — in production this view is hidden. Try <code className="font-mono">alice</code> (founder) or
-              <code className="font-mono"> admin</code> (admin console).
-            </p>
-          </Bento>
         </div>
 
         <div className="md:pl-10">
@@ -107,7 +71,7 @@ export function Login() {
                   value={handle}
                   onChange={(e) => { setHandle(e.target.value); setError(null); }}
                   placeholder="your-github-handle"
-                  className="flex-1 bg-transparent text-base outline-none placeholder:text-textsec"
+                  className="flex-1 bg-transparent outline-none placeholder:text-textsec"
                   autoFocus
                   autoComplete="off"
                 />
@@ -118,12 +82,9 @@ export function Login() {
                   {error}
                 </div>
               ) : null}
-              <button type="submit" className="neon-button mt-2 w-full text-base">
+              <button type="submit" className="neon-button mt-2 w-full">
                 <GithubIcon /> Continue
               </button>
-              <div className="display-mono pt-2 text-center">
-                MVP uses mocked GitHub auth · real OAuth in V1
-              </div>
             </form>
           </Bento>
         </div>

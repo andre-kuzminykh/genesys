@@ -1025,6 +1025,29 @@ under cards. Also: real GitHub handle should be on the allowlist.
 
 ---
 
+## 11.5. Landing visual pass v0.5.1 (added 2026-05-15)
+
+Tightening pass on v0.5:
+
+- **Page background** locked to `#060913` (rgb 6 9 19) to match the supplied
+  wordmark image; `--c-surface` and `--c-surfaceLight` re-keyed accordingly.
+- **Featured card and list cards share width** (both `max-w-3xl`, single
+  column). Pagination dots **render at the top inside the featured cover**
+  in a frosted pill; the giant chevrons sit OUTSIDE the card on the sides
+  (absolute, no bg, no border).
+- **Search input is centered** in the header via a 3-column grid
+  `[logo | search | theme+login]`. Logo size stays at `md`.
+- **Hashtag bar chips** no longer show the usage count — only `#tag`.
+- **Login page chrome removed**: Allowlist preview, cohort paragraph,
+  "MVP uses mocked GitHub auth · real OAuth in V1" footer all gone. The
+  bg/text contrast on the handle `<input>` was broken because
+  `colors.base` in Tailwind config collided with the built-in `text-base`
+  font-size class — fixed by restoring `text-base { font-size: 1rem }`
+  via `@layer utilities` and replacing the `text-base` *colour* usages
+  with `text-ink` (always-dark token).
+
+---
+
 ## 11. Landing visual pass v0.5 (added 2026-05-15)
 
 User feedback after v0.4: logo too big and bg didn't match the logo image
