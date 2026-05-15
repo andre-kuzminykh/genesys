@@ -200,7 +200,10 @@ function FeaturedCard({
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(120%_70%_at_50%_30%,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
 
         <div className="absolute top-5 left-5">
-          <span className="rounded-full bg-base/70 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30 backdrop-blur">
+          <span
+            className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neon-500 border border-neon-500/30 backdrop-blur"
+            style={{ background: 'rgba(0,0,0,0.65)' }}
+          >
             <SparkleIcon size={10} className="inline mr-1" /> Featured
           </span>
         </div>
@@ -212,10 +215,16 @@ function FeaturedCard({
         ) : null}
 
         <div className="absolute bottom-0 left-0 right-0 p-7">
-          <h2 className="font-display text-5xl font-extrabold leading-[1.05] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+          <h2
+            className="font-display text-5xl font-extrabold leading-[1.05] drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+            style={{ color: '#FFFFFF' }}
+          >
             {startup.name}
           </h2>
-          <p className="mt-3 max-w-2xl text-white/85 line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+          <p
+            className="mt-3 max-w-2xl line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+            style={{ color: 'rgba(255,255,255,0.85)' }}
+          >
             {startup.pitch}
           </p>
         </div>
@@ -256,13 +265,17 @@ function FeaturedCarousel({
           startup={current.startup}
           onOpen={() => onOpen(current.startup.id)}
           topOverlay={
-            <div className="flex items-center gap-1.5 rounded-full bg-base/70 px-3 py-1.5 backdrop-blur-md">
+            <div
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 backdrop-blur-md"
+              style={{ background: 'rgba(0,0,0,0.55)' }}
+            >
               {items.map((_, i) => (
                 <button
                   key={i}
                   onClick={(e) => { e.stopPropagation(); setIndex(i); }}
                   aria-label={`Go to slide ${i + 1}`}
-                  className={`h-1.5 rounded-full transition-all ${i === index ? 'w-7 bg-neon-500' : 'w-2 bg-white/40 hover:bg-white/70'}`}
+                  className={`h-1.5 rounded-full transition-all ${i === index ? 'w-7 bg-neon-500' : 'w-2'}`}
+                  style={i !== index ? { background: 'rgba(255,255,255,0.45)' } : undefined}
                 />
               ))}
             </div>
