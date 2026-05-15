@@ -45,7 +45,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        brand:   ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        brand:   ['Outfit', '"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         display: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         sans:    ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
         mono:    ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
