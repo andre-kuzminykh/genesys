@@ -39,9 +39,9 @@ describe('TEST-GEN-024 — Marketplace lists only published startups in active b
     unmount();
 
     // Simulate session by writing directly to localStorage.
-    const stored = JSON.parse(localStorage.getItem('genesys:v0.5')!);
+    const stored = JSON.parse(localStorage.getItem('genesys:v0.6')!);
     stored.session = { handle: 'alice', loggedInAt: Date.now() };
-    localStorage.setItem('genesys:v0.5', JSON.stringify(stored));
+    localStorage.setItem('genesys:v0.6', JSON.stringify(stored));
 
     renderApp('/app/marketplace');
     expect(screen.getByText('Aurora')).toBeInTheDocument();

@@ -1025,6 +1025,109 @@ under cards. Also: real GitHub handle should be on the allowlist.
 
 ---
 
+## 15. Public Leaderboard with LLM-driven market simulation (added 2026-05-16)
+
+The Landing leaderboard is a standalone public screen that runs an LLM panel
+across all published startups. For each startup the panel produces (1) a
+persona-based user review, (2) a market deep-research review, (3) a 13-month
+forecast (May 2026 → May 2027) of users + USD revenue, and (4) a prioritised
+recommendation. Aggregating the user reviews bumps the public-feed upvote
+counter (the cohort favourite floats up). The screen draws two line-charts
+(users + revenue) over the 13 months and announces the cohort winner on top.
+
+### 15.1 Domain — `domain/simulation.ts`
+
+Pure TypeScript, framework-agnostic. Public surface:
+
+| Symbol | Purpose |
+|---|---|
+| `MonthlyPoint` | `{ month: 'YYYY-MM', users, revenueUSD }` |
+| `UserReview` | `{ personaIds, score 0..100, notes, upvoteBump }` |
+| `MarketReview` | `{ score 0..100, notes, trends: [{label, impact}] }` |
+| `StartupForecast` | per-startup envelope: `monthly[]`, `endUsers`, `totalRevenueUSD`, `userReview`, `marketReview`, `recommendation` |
+| `SimulationResult` | `{ runAt, months, startups[], winner, userSummary, marketSummary, overallSummary }` |
+| `LlmPort` | `reviewForUser`, `reviewForMarket`, `forecastSeries`, `recommend` |
+| `MockLlmAdapter` | deterministic implementation; ships by default |
+| `runSimulation(startups, llm?)` | composes the four LLM steps into a `SimulationResult` |
+| `simulationMonths()` | utility returning the 13 month identifiers |
+
+The MockLlm uses a hashtag-driven trend index (`HASHTAG_TREND`) with bumps
+per common AI-app tag (`ai-agents` 1.30, `image-gen` 1.20, `hardware` 0.85,
+…) and a persona-bias map that mirrors the existing
+`MockPersonaSimulator` (FR-GEN-040). The forecast applies compound monthly
+growth × seasonal sine × deterministic noise seeded by the startup id.
+
+### 15.2 Real LLM — `ai/openai.ts`
+
+`OpenAILlmAdapter` is a drop-in `LlmPort` that POSTs to
+`https://api.openai.com/v1/chat/completions` with `response_format: json_object`.
+The API key is supplied at construction time. **The key is never bundled
+into the source** — the user pastes it on the Leaderboard, it lives in
+`localStorage` at `genesys:openai-key:v1` only. CORS is open from
+`api.openai.com` to browser callers carrying a Bearer token, so no backend
+proxy is required for the demo.
+
+If OpenAI errors (rate-limit, invalid key, network), the runner falls back to
+`MockLlmAdapter` and surfaces a banner so the screen always renders something.
+
+### 15.3 UI — `screens/Leaderboard.tsx`
+
+Public route `/leaderboard`. Linked from the Landing header (TrophyIcon).
+Sections from top to bottom:
+
+1. Header: wordmark · "Browse cohort" · "Login".
+2. Hero: chip · title · description · primary CTA "Run market simulation"
+   (or "Re-run simulation" when a forecast exists). Right rail also shows the
+   live/mock indicator and the timestamp of the last run.
+3. OpenAI key field (collapsible). Password-masked input, "show / forget"
+   controls, in-browser-only disclaimer.
+4. While running: a stepped status banner cycles through five stages
+   (description read → market deep research → persona review → forecast →
+   aggregation).
+5. Winner banner: name + reasoning + end-users + year-revenue stats.
+6. Two line charts: monthly users & monthly revenue, one series per startup
+   colour-coded from the cohort palette, cross-highlightable on hover via a
+   chip legend.
+7. Per-startup list (sorted by year revenue, descending). Each item shows
+   the user review (score + notes), market review (score + notes + trend
+   chips), and a neon-bordered recommendation box. Top stats: end users,
+   year revenue, +upvotes contributed back to the cohort feed.
+8. Three summary cards (cohort users · cohort market · overall verdict).
+
+### 15.4 Side effect — upvote application
+
+After a successful run, the screen iterates the per-startup `upvoteBump` and
+adds it to the existing public-feed upvote map at `genesys:upvotes:v1`. The
+Landing list cards re-rank automatically the next render — "the cohort
+favourite floats up" per the user's request.
+
+### 15.5 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-300 | `simulationMonths()` MUST return 13 months from May 2026 to May 2027 inclusive. | TEST-GEN-210 |
+| FR-GEN-301 | `MockLlmAdapter.reviewForUser(...)` MUST be deterministic and return `score ∈ [0,100]`. | TEST-GEN-211 |
+| FR-GEN-302 | `MockLlmAdapter.reviewForMarket(...)` MUST score hashtags such that hot-tag mixes (`ai-agents`, `image-gen`) score strictly higher than cold-tag mixes (`hardware`, `k12`). | TEST-GEN-211 |
+| FR-GEN-303 | `MockLlmAdapter.forecastSeries(...)` MUST return one `MonthlyPoint` per requested month and the final month's `users` MUST be > the first month's. | TEST-GEN-211 |
+| FR-GEN-304 | `runSimulation(startups, llm)` MUST produce one `StartupForecast` per startup, pick a `winner`, and emit three summaries. | TEST-GEN-212 |
+| FR-GEN-305 | The Leaderboard MUST add each startup's `userReview.upvoteBump` to the existing public-feed upvote counter. | (UI side-effect, covered manually) |
+| FR-GEN-306 | When a non-empty OpenAI key is present, the Leaderboard MUST instantiate `OpenAILlmAdapter` instead of `MockLlmAdapter`; OpenAI errors MUST fall back to mock with an in-screen banner. | (manual) |
+
+### 15.6 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Leaderboard with LLM forecast | UC-GEN-013 | FR-GEN-300..306 | TEST-GEN-210..212 |
+
+### 15.7 Security note
+
+A public OpenAI key in the browser is visible to the user (and any
+extension) — that's why the screen makes the storage explicit and provides
+"show / forget" controls. For production we would proxy the calls through
+a backend so the key never lands in the client bundle.
+
+---
+
 ## 14. Real GitHub authentication (added 2026-05-15)
 
 The mocked login is now a secondary path. The primary identity in the demo

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
+import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon, TrophyIcon } from '../design/Icon';
 import { remainingCredits } from '@/domain/investments';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
@@ -767,6 +767,7 @@ export function Landing() {
               <span>{fmtUSD(myWallet ?? 0)}</span>
             </div>
           ) : null}
+          <Link to="/leaderboard" className="ghost-button shrink-0"><TrophyIcon /> Leaderboard</Link>
           <ThemeToggle />
           {myHandle ? (
             <Link to="/onboarding/repo" className="ghost-button shrink-0"><GithubIcon /> @{myHandle}</Link>

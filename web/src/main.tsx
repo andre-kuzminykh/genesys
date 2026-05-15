@@ -35,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Routes>
           {/* public */}
           <Route path="/" element={<Landing />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/login" element={<Login />} />
           <Route path="/denied" element={<Denied />} />
 
