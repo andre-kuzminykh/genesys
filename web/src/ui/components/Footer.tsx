@@ -15,7 +15,7 @@ const SOCIALS: Array<{ label: string; href: string; icon: JSX.Element }> = [
 export function Footer() {
   return (
     <footer className="mt-12 border-t border-surfaceLight bg-base">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+      <div className="mx-auto grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
         <div className="flex items-center gap-3">
           {SOCIALS.map((s) => (
             <a
@@ -25,16 +25,18 @@ export function Footer() {
               rel="noopener noreferrer"
               aria-label={s.label}
               title={s.label}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500"
+              className="inline-flex items-center justify-center p-1 text-textsec transition hover:text-neon-500"
             >
               {s.icon}
             </a>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[11px] uppercase tracking-wider text-textsec">
+        <div className="flex items-center justify-center gap-4 font-mono text-[11px] uppercase tracking-wider text-textsec">
           <a href="/terms" className="hover:text-neon-500">Terms</a>
           <a href="/privacy" className="hover:text-neon-500">Privacy</a>
-          <span>© {new Date().getFullYear()} Andre AI Technologies. All rights reserved.</span>
+        </div>
+        <div className="font-mono text-[11px] uppercase tracking-wider text-textsec">
+          © {new Date().getFullYear()} Andre AI Technologies. All rights reserved.
         </div>
       </div>
     </footer>
