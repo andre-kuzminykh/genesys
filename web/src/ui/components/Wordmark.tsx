@@ -3,10 +3,10 @@ import { useState } from 'react';
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 const SIZES: Record<Size, { font: number; gap: number; cursorW: number; cursorH: number; cursorMb: number }> = {
-  sm: { font: 18, gap: 8,  cursorW: 10, cursorH: 3, cursorMb: 4 },
-  md: { font: 26, gap: 10, cursorW: 14, cursorH: 4, cursorMb: 5 },
-  lg: { font: 42, gap: 14, cursorW: 22, cursorH: 5, cursorMb: 8 },
-  xl: { font: 72, gap: 22, cursorW: 38, cursorH: 8, cursorMb: 14 },
+  sm: { font: 18, gap: 6,  cursorW: 6,  cursorH: 2, cursorMb: 4 },
+  md: { font: 26, gap: 8,  cursorW: 8,  cursorH: 3, cursorMb: 5 },
+  lg: { font: 42, gap: 10, cursorW: 12, cursorH: 4, cursorMb: 8 },
+  xl: { font: 96, gap: 14, cursorW: 18, cursorH: 5, cursorMb: 16 },
 };
 
 /**

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon, TrophyIcon } from '../design/Icon';
+import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
 import { remainingCredits } from '@/domain/investments';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
@@ -780,7 +780,9 @@ export function Landing() {
   const open = openIndex !== null ? list[openIndex] : null;
 
   const myHandle = state.session?.handle;
-  const myWallet = myHandle ? remainingCredits(state, state.activeBatchId, myHandle) : null;
+  const activeBatch = state.batches.find((b) => b.id === state.activeBatchId);
+  const defaultBudget = activeBatch?.creditsPerInvestor ?? 100000;
+  const myWallet = myHandle ? remainingCredits(state, state.activeBatchId, myHandle) : defaultBudget;
   const myInvestments: Record<string, number> = useMemo(() => {
     const out: Record<string, number> = {};
     if (!myHandle) return out;
@@ -815,25 +817,14 @@ export function Landing() {
         </div>
 
         <div className="flex items-center gap-3">
-          {myHandle ? (
-            <Link
-              to="/leaderboard"
-              title="Open leaderboard"
-              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display font-extrabold transition hover:border-neon-500/40 hover:text-neon-500"
-            >
-              <DollarIcon size={14} className="text-neon-500" />
-              <span>{fmtUSD(myWallet ?? 0)}</span>
-            </Link>
-          ) : (
-            <Link
-              to="/leaderboard"
-              title="Open leaderboard"
-              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display font-bold transition hover:border-neon-500/40 hover:text-neon-500"
-            >
-              <TrophyIcon size={14} className="text-neon-500" />
-              <span>Leaderboard</span>
-            </Link>
-          )}
+          <Link
+            to="/leaderboard"
+            title={myHandle ? 'Open leaderboard · your wallet' : 'Sign in to invest · open leaderboard'}
+            className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display font-extrabold transition hover:border-neon-500/40 hover:text-neon-500"
+          >
+            <DollarIcon size={14} className="text-neon-500" />
+            <span>{fmtUSD(myWallet)}</span>
+          </Link>
           <ThemeToggle />
           {myHandle ? (
             <Link

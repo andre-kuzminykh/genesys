@@ -39,7 +39,7 @@ describe('TEST-GEN-024 — Marketplace lists only published startups in active b
         </AppStoreProvider>
       </ThemeProvider>,
     );
-    expect(screen.getByPlaceholderText(/ghp_|github_pat/)).toBeInTheDocument();
+    expect(screen.getByText(/continue with github/i)).toBeInTheDocument();
     unmount();
 
     // Simulate session by writing directly to localStorage.

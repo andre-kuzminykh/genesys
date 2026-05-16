@@ -22,11 +22,21 @@ app.get('/auth/health', (_req, res) => {
   });
 });
 
+// Reject obvious placeholder values so users see a clear error instead of GitHub's 404.
+const PLACEHOLDER_RX = /(your|твой|client_id|client_secret|placeholder|<.*>|change_me|todo)/i;
+
 app.get('/auth/github', (_req, res) => {
   if (!CLIENT_ID || !PUBLIC_URL) {
-    return res.status(500).type('text/plain').send(
-      'GitHub OAuth is not configured. Set GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET and PUBLIC_URL.\n'
-    );
+    return res.status(500).type('text/html').send(htmlError(
+      'GitHub OAuth not configured',
+      'Set <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code> and <code>PUBLIC_URL</code> in /opt/genesis/.env, then <code>docker compose up -d --force-recreate auth</code>.',
+    ));
+  }
+  if (PLACEHOLDER_RX.test(CLIENT_ID) || PLACEHOLDER_RX.test(CLIENT_SECRET)) {
+    return res.status(500).type('text/html').send(htmlError(
+      'You left placeholder values in .env',
+      'Create a real GitHub OAuth App at <a href="https://github.com/settings/applications/new">github.com/settings/applications/new</a>, copy the Client ID + Client Secret into /opt/genesis/.env, then <code>docker compose up -d --force-recreate auth</code>.',
+    ));
   }
   const state = Math.random().toString(36).slice(2);
   const params = new URLSearchParams({
@@ -62,6 +72,19 @@ app.get('/auth/github/callback', async (req, res) => {
     return res.redirect('/login?error=exchange');
   }
 });
+
+function htmlError(title, body) {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  body{background:#060913;color:#fff;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px}
+  .card{max-width:640px;border:1px solid #2A2E3D;background:#161B34;border-radius:24px;padding:32px}
+  h1{color:#FF4B4B;margin:0 0 16px}
+  p{color:#A0A8C6;line-height:1.6;font-size:15px}
+  code{background:#060913;padding:2px 6px;border-radius:4px;color:#7FFF00;font-family:"JetBrains Mono",monospace}
+  a{color:#7FFF00}
+</style>
+</head><body><div class="card"><h1>${title}</h1><p>${body}</p></div></body></html>`;
+}
 
 app.listen(PORT, () => {
   console.log(`[genesys-auth] listening on :${PORT}, configured=${Boolean(CLIENT_ID && CLIENT_SECRET && PUBLIC_URL)}`);
