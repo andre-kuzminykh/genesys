@@ -89,14 +89,31 @@ export function Leaderboard() {
   const [focus, setFocus] = useState<string | null>(null);
   const [adapterErr, setAdapterErr] = useState<string | null>(null);
   const [activity, setActivity] = useState<string[]>([]);
+  // Queue + drainer so log lines arrive one-at-a-time at a steady rate, even
+  // when 16 phase events fire in a burst. Reads like a news ticker.
+  const queueRef = useRef<string[]>([]);
+  const drainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const drainIntervalRef = useRef<number>(220);
+  const pumpQueue = useCallback(() => {
+    if (drainTimerRef.current) return;
+    const tick = () => {
+      const next = queueRef.current.shift();
+      if (next === undefined) { drainTimerRef.current = null; return; }
+      setActivity((prev) => prev.length >= 500 ? [...prev.slice(-499), next] : [...prev, next]);
+      drainTimerRef.current = setTimeout(tick, drainIntervalRef.current);
+    };
+    drainTimerRef.current = setTimeout(tick, 0);
+  }, []);
   const logActivity = useCallback((line: string) => {
-    setActivity((prev) => {
-      const next = [...prev, line];
-      // 16 startups × 4 phases + 13 months × ~17 lines per month = ~290 lines
-      // for a full run. Trim conservatively above that so React doesn't have
-      // to render thousands of nodes if the user kicks off multiple runs.
-      return next.length > 500 ? next.slice(-500) : next;
-    });
+    queueRef.current.push(line);
+    pumpQueue();
+  }, [pumpQueue]);
+  const setDrainSpeed = useCallback((ms: number) => { drainIntervalRef.current = ms; }, []);
+  const drainNow = useCallback(async () => {
+    // Resolve once the visible queue has caught up to whatever's been pushed.
+    while (queueRef.current.length > 0 || drainTimerRef.current) {
+      await new Promise<void>((r) => setTimeout(r, 50));
+    }
   }, []);
   const [revealIndex, setRevealIndex] = useState<number>(() => loadCached()?.months.length ?? 0);
   const revealing = forecast !== null && revealIndex < forecast.months.length;
@@ -119,34 +136,16 @@ export function Leaderboard() {
       ? new OpenAILlmAdapter({ apiKey: BAKED_OPENAI_KEY, model: BAKED_OPENAI_MODEL })
       : new MockLlmAdapter();
 
-    setStage(HAS_BAKED_KEY
-      ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: ICP user review + market deep-read (web_search) + 13-month forecast + recommendation, ${startups.length} startups`
-      : 'No OpenAI key — running deterministic mock');
+    setStage('analysing 16 cohort startups…');
+    setDrainSpeed(220);
 
-    // Per-startup, per-phase progress feed — formatted as a news ticker
-    // (emoji + short narrative) so reading the log feels like watching a
-    // newsroom rather than a CI build log.
+    // Compact analysis feed: ONE narrative line per startup (no per-phase
+    // chatter). The interesting stuff lands during the monthly reveal.
+    let analysed = 0;
     const onEvent = (e: import('@/domain/simulation').SimulationEvent) => {
-      if (e.kind === 'phase-start') {
-        const start: Record<string, string> = {
-          user:      `🎯 ${e.startupName} walks into a room of 5 ICP personas — first impressions in progress…`,
-          market:    `🔍 ${e.startupName}: scanning the live market (web_search) for trends, incumbents, regulation…`,
-          forecast:  `📈 ${e.startupName}: drafting a 13-month users + revenue curve…`,
-          narrative: `📰 ${e.startupName}: composing the 13-month news ticker (causes that feed the advice)…`,
-          recommend: `🧭 ${e.startupName}: advisor is drafting a 30/60/90 plan from the narrative…`,
-        };
-        logActivity(start[e.phase] ?? `▶ ${e.startupName} · ${e.phase}`);
-      } else if (e.kind === 'phase-done') {
-        const done: Record<string, string> = {
-          user:      `💡 ${e.startupName}: panel verdict — ${e.summary}`,
-          market:    `📰 ${e.startupName}: market read — ${e.summary}`,
-          forecast:  `🚀 ${e.startupName}: forecast lands — ${e.summary}`,
-          narrative: `📜 ${e.startupName}: ${e.summary}`,
-          recommend: `📝 ${e.startupName}: ${e.summary}`,
-        };
-        logActivity(done[e.phase] ?? `  ${e.startupName} · ${e.phase}: ${e.summary}`);
-      } else if (e.kind === 'startup-done') {
-        logActivity(`🏁 ${e.startupName} — analysis complete · ${e.endUsers.toLocaleString()} users, $${e.totalRevenueUSD.toLocaleString()} year revenue`);
+      if (e.kind === 'startup-done') {
+        analysed += 1;
+        logActivity(`🤖 (${analysed}/${startups.length}) ${e.startupName} analysed — ${e.endUsers.toLocaleString()} users, $${e.totalRevenueUSD.toLocaleString()}/yr forecast`);
       }
     };
 
@@ -161,23 +160,29 @@ export function Leaderboard() {
 
     saveCached(result);
     setForecast(result);
-    logActivity(`✨ All 16 startups analysed. Rolling the month-by-month tape now…`);
+    await drainNow();
+    logActivity(`✨ All ${startups.length} startups analysed. Rolling the month-by-month tape now…`);
+    await drainNow();
 
-    // Month-by-month reveal — emit a header per month plus one news line per
-    // startup describing that month's delta + milestone, so the chart growth
-    // is matched by a streaming "news feed" the audience can follow.
-    const MS_PER_MONTH = 2500;
+    // Month-by-month reveal — for each month: stream one news line per
+    // startup at a steady cadence (events FIRST), THEN advance the chart,
+    // then a short breath before the next month. Reads like a news ticker
+    // walking through the year.
+    const PER_EVENT_MS = 260;
+    const MONTH_BREATHER_MS = 600;
     const monthLabel = (ym: string) => {
       const [y, m] = ym.split('-').map(Number);
       const d = new Date(y!, m! - 1, 1);
       return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     };
+
+    setDrainSpeed(PER_EVENT_MS);
+
     for (let i = 1; i <= result.months.length; i++) {
-      setRevealIndex(i);
       const ym = result.months[i - 1]!;
       const cohortUsers = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.users, 0);
       const cohortRev = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.revenueUSD, 0);
-      setStage(`📅 ${monthLabel(ym)} · ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()} revenue · month ${i}/${result.months.length}`);
+      setStage(`📅 ${monthLabel(ym)} · month ${i}/${result.months.length}`);
       logActivity(`📅 ${monthLabel(ym)} — month ${i}/${result.months.length} · cohort ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()}`);
 
       for (const f of result.startups) {
@@ -185,8 +190,6 @@ export function Leaderboard() {
         const prev = i > 1 ? f.monthly[i - 2]! : { users: 0, revenueUSD: 0 } as { users: number; revenueUSD: number };
         const du = cur.users - prev.users;
         const dr = cur.revenueUSD - prev.revenueUSD;
-        // The LLM-generated narrative event for this month (with a `because`
-        // cause that gets re-used by the recommendation prompt).
         const ev = f.events?.find((x) => x.month === ym);
         const head =
           i === 1 ? '🚀' :
@@ -196,23 +199,25 @@ export function Leaderboard() {
           (prev.users < 1000 && cur.users >= 1000) ? '🌠' :
           (prev.users > 0 && du / prev.users > 0.3) ? '📈' :
           '·';
-        const numbers = `${cur.users.toLocaleString()} users (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`;
+        const numbers = `${cur.users.toLocaleString()} (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`;
         if (ev?.event) {
-          logActivity(`  ${head} ${ev.event}`);
-          logActivity(`     ${numbers}`);
+          logActivity(`  ${head} ${ev.event}  —  ${numbers}`);
         } else {
           logActivity(`  ${head} ${f.startupName}: ${numbers}`);
         }
       }
 
-      await sleep(MS_PER_MONTH);
+      // Wait for the dripper to finish emitting THIS month's events before
+      // the chart steps forward, then breathe a moment.
+      await drainNow();
+      setRevealIndex(i);
+      await sleep(MONTH_BREATHER_MS);
     }
 
     applyUpvoteBumps(result);
     logActivity(`🏆 Final tape: ${result.winner.startupName} wins on combined signal.`);
-    // Hold the log open for a moment so the user can read the final lines
-    // before the busy Bento collapses.
-    await sleep(3500);
+    await drainNow();
+    await sleep(2500);
     setBusy(false);
     setStage('');
   }
@@ -256,39 +261,33 @@ export function Leaderboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        {/* Hero — no big heading; the screen content speaks for itself */}
-        <section className="mt-6 flex flex-wrap items-end justify-between gap-4">
-          <p className="max-w-2xl text-textsec">
-            An LLM panel reads each startup's spec, probes the market through hashtag trend signals,
-            runs persona reviews, and forecasts monthly users and revenue from May 2026 to May 2027.
-          </p>
-          <div className="text-right">
-            <button onClick={run} disabled={busy} className="neon-button disabled:opacity-60">
-              <SparkleIcon /> {busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
+        {/* Idle / done states show the run button at the top. While busy, the
+            button moves inside the activity bento so the screen reads as a
+            single, focused "panel is running" surface. */}
+        {!busy ? (
+          <section className="mt-6 flex justify-end">
+            <button onClick={run} className="neon-button">
+              <SparkleIcon /> {forecast ? 'Re-run simulation' : 'Run market simulation'}
             </button>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         {adapterErr ? (
           <div className="mt-4 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{adapterErr}</div>
         ) : null}
 
         {busy ? (
-          <Bento className="mt-6" tone="sky">
-            <div className="flex items-center gap-3">
-              <span className="inline-block h-3 w-3 rounded-full bg-neon-500 animate-pulseGlow" />
-              <span className="font-display text-base">{stage}</span>
-            </div>
-            {activity.length > 0 ? (
+          <div className="mx-auto mt-6 max-w-xl">
+            <Bento tone="sky">
+              <button disabled className="neon-button w-full !py-3 text-base">
+                <SparkleIcon /> Running…
+              </button>
+              {stage ? (
+                <div className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-textsec">{stage}</div>
+              ) : null}
               <ActivityLog lines={activity} />
-            ) : (
-              <p className="mt-2 text-sm text-textsec">
-                {HAS_BAKED_KEY
-                  ? 'Spinning up the panel — first events should arrive in a few seconds…'
-                  : 'No OpenAI key configured at build time — falling back to deterministic mock. Set VITE_OPENAI_API_KEY in /opt/genesis/.env and rebuild to get real LLM analysis.'}
-              </p>
-            )}
-          </Bento>
+            </Bento>
+          </div>
         ) : null}
 
         {!forecast && !busy ? (
@@ -409,10 +408,15 @@ export function Leaderboard() {
                           <span className="inline-block h-3 w-3 rounded-full" style={{ background: colorFor(forecast.startups.findIndex((x) => x.startupId === f.startupId)) }} />
                           <h3 className="font-display text-2xl font-extrabold">#{i + 1} · {f.startupName}</h3>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Stat label="End users" value={f.endUsers.toLocaleString()} />
-                          <Stat label="Year rev." value={fmtUSD(f.totalRevenueUSD)} />
-                          <Stat label="+upvotes" value={'+' + f.userReview.upvoteBump} />
+                        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+                          <span className="display-mono">End users</span>
+                          <span className="font-display text-lg font-extrabold">{f.endUsers.toLocaleString()}</span>
+                          <span className="text-textsec">·</span>
+                          <span className="display-mono">Year rev.</span>
+                          <span className="font-display text-lg font-extrabold">{fmtUSD(f.totalRevenueUSD)}</span>
+                          <span className="text-textsec">·</span>
+                          <span className="display-mono">+upvotes</span>
+                          <span className="font-display text-lg font-extrabold text-signal-green">+{f.userReview.upvoteBump}</span>
                         </div>
                       </div>
 
@@ -423,7 +427,10 @@ export function Leaderboard() {
                             <span className="font-display text-3xl font-extrabold text-neon-500">{f.userReview.score}</span>
                             <span className="text-xs text-textsec">/ 100</span>
                           </div>
-                          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-textsec">{f.userReview.notes}</p>
+                          {f.userReview.perPersona && f.userReview.perPersona.length > 0 ? (
+                            <PersonaPanel verdicts={f.userReview.perPersona} />
+                          ) : null}
+                          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-textsec">{f.userReview.notes}</p>
                         </div>
                         <div className="rounded-2xl border border-surfaceLight bg-base p-4">
                           <div className="display-mono">market review</div>
@@ -502,6 +509,53 @@ function ActivityLog({ lines }: { lines: string[] }) {
         );
       })}
     </div>
+  );
+}
+
+function PersonaPanel({ verdicts }: { verdicts: Array<{ id: string; label: string; score: number; quote: string }> }) {
+  // Two-tone silhouette: deterministic gender based on persona-id hash so the
+  // same persona always renders with the same avatar across runs.
+  const isFemale = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h) % 2 === 1;
+  };
+  return (
+    <ul className="mt-3 space-y-2.5">
+      {verdicts.map((v) => (
+        <li key={v.id + v.label} className="flex items-start gap-3">
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-surfaceLight bg-surface text-textsec"
+          >
+            <SilhouetteIcon female={isFemale(v.id + v.label)} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-sm font-extrabold">{v.label}</span>
+              <span className="font-mono text-[10px] text-textsec">{v.score}/100</span>
+            </div>
+            <div className="mt-0.5 text-sm leading-snug text-textsec">"{v.quote}"</div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SilhouetteIcon({ female }: { female: boolean }) {
+  // Generic faceless head+shoulders silhouette. The `female` flag swaps in
+  // longer hair contour — purely decorative, no facial features.
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      {female ? (
+        // round head + shoulder-length hair contour + torso
+        <path d="M12 2c2.5 0 4.5 2 4.5 4.5v.7c1 .6 1.7 1.7 1.7 3v.6c0 1.2-.7 2.3-1.7 2.9V14c0 1.6 1 3 2.5 3.6V19c0 1.7-3.4 3-7 3s-7-1.3-7-3v-1.4C6.5 17 7.5 15.6 7.5 14v-.3c-1-.6-1.7-1.7-1.7-2.9v-.6c0-1.3.7-2.4 1.7-3v-.7C7.5 4 9.5 2 12 2z" />
+      ) : (
+        // round head + tight torso silhouette
+        <path d="M12 2.5a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0v-1a4 4 0 0 1 4-4zm-7 18c0-3.5 3.1-5.5 7-5.5s7 2 7 5.5V22H5z" />
+      )}
+    </svg>
   );
 }
 

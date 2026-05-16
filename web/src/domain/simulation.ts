@@ -19,6 +19,17 @@ export interface MonthlyPoint {
   revenueUSD: number;
 }
 
+export interface PersonaVerdict {
+  /** PersonaId — matches one of the personas the panel was given. */
+  id: PersonaId;
+  /** Display label the LLM picked for this persona (e.g. "Mia, impatient PM"). */
+  label: string;
+  /** 0..100 — this persona's individual verdict. */
+  score: number;
+  /** Short first-person quote (≤ 180 chars) the persona "says". */
+  quote: string;
+}
+
 export interface UserReview {
   personaIds: PersonaId[];
   /** 0..100, average across the persona panel */
@@ -26,6 +37,8 @@ export interface UserReview {
   notes: string;
   /** integer; how many upvotes this review should add to the startup */
   upvoteBump: number;
+  /** Per-persona breakdown with quotes — drives the avatar panel UI. */
+  perPersona?: PersonaVerdict[];
 }
 
 export interface MarketReview {

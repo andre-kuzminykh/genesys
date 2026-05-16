@@ -128,51 +128,66 @@ export class OpenAILlmAdapter implements LlmPort {
 
   async reviewForUser({ startup, personas }: { startup: Startup; personas: PersonaId[] }): Promise<UserReview> {
     const prompt = `# Task
-You are running a panel of these 5 distinct user personas through a guided product review of an early-stage startup. Each persona has its own bias and objection style.
+You are running a panel of 5 distinct user personas through a guided product review of an early-stage startup. Each persona has its own bias and objection style.
 
 ${PERSONA_BIBLE}
 
-Active panel: ${personas.join(', ')}
+Active panel (persona ids): ${personas.join(', ')}
 
 # Startup under review
 - Name: ${startup.name}
 - One-line pitch: ${startup.pitch}
 - Category: ${startup.category}
 - Hashtags: ${startup.hashtags.map((h) => '#' + h).join(' ')}
-- Long description (this is what the founder writes about the product):
+- Long description:
 """
 ${startup.description ?? '(none)'}
 """
-- Founder-reported scores (subjective, treat skeptically): tech execution ${startup.techExecution}/100, pitch ${startup.pitchScore}/100, market potential ${startup.marketPotential}/100.
+- Founder-reported scores (treat skeptically): tech execution ${startup.techExecution}/100, pitch ${startup.pitchScore}/100, market potential ${startup.marketPotential}/100.
 
-# What I want you to do
-1. INFER the Ideal Customer Profile (ICP) for this product in one sentence — who exactly is the early adopter, what are they doing today, and what is the painful trigger that pushes them to try this. Be specific (role, segment, behaviour, willingness-to-pay).
-2. Mentally walk EACH persona through onboarding → first value → repeat use → invite-a-friend. Score each persona 0..100 on how likely they are to keep using it after week 2.
-3. Aggregate to one panel score (the average rounded to int).
-4. Write a substantive 4-6 sentence narrative review in the panel's voice. It MUST mention specific objections (pricing, friction, missing capability, ICP mismatch) and specific delights (where the product hits) — NOT generic praise. Reference at least one persona by name.
-5. Estimate how many upvotes this would earn on a launch board (0..30).
+# What I want
+1. INFER the Ideal Customer Profile (ICP) in one sentence (role + segment + trigger + willingness-to-pay).
+2. For EACH persona, walk them through onboarding → first value → repeat use → invite-a-friend.
+   For each persona produce:
+   - id (one of the persona ids above)
+   - label: a short human label "FirstName, one-line role" (e.g. "Mia, indie illustrator" for the impatient persona reviewing an art tool). Names should match the persona's likely demographic.
+   - score 0..100 (how likely to keep using after week 2)
+   - quote: a FIRST-PERSON 1-2 sentence quote (≤ 180 chars) the persona would actually say about THIS startup — specific, vivid, with their bias on display. NOT generic ("looks cool"); cite a concrete delight or objection from this product.
+3. Aggregate panel score = average of per-persona scores, rounded.
+4. Write a 4-6 sentence narrative review summarizing the panel's overall reception — name at least one persona, reference specific objections + delights.
+5. Estimate upvotes this would earn on a launch board (0..30).
 
 # Output JSON schema
 {
-  "icp": "<one-sentence ICP — who they are, what they do today, what triggers them>",
-  "perPersona": [ { "id": "<persona id>", "score": <int 0..100>, "objection": "<one short objection>" }, ... one per persona ],
+  "icp": "<one-sentence ICP>",
+  "perPersona": [
+    { "id": "<persona id>", "label": "<First Name, one-line role>", "score": <int 0..100>, "quote": "<first-person quote, ≤180 chars>" },
+    ... one per persona, same order as input
+  ],
   "score": <int 0..100, average>,
-  "notes": "<4-6 sentence panel review, specific, NOT generic>",
+  "notes": "<4-6 sentence panel review>",
   "upvoteBump": <int 0..30>
 }`;
     const out = await this.chat<{
       icp: string;
-      perPersona: { id: string; score: number; objection: string }[];
+      perPersona: { id: string; label: string; score: number; quote: string }[];
       score: number;
       notes: string;
       upvoteBump: number;
-    }>(prompt, { max_tokens: 1400 });
+    }>(prompt, { max_tokens: 1800 });
     const icpLine = out.icp ? `ICP: ${out.icp}\n\n` : '';
+    const perPersona = (out.perPersona ?? []).map((p) => ({
+      id: (p.id ?? '') as PersonaId,
+      label: String(p.label ?? '').slice(0, 80),
+      score: clamp(Math.round(p.score), 0, 100),
+      quote: String(p.quote ?? '').slice(0, 200),
+    })).filter((p) => p.label && p.quote);
     return {
       personaIds: personas,
       score: clamp(out.score, 0, 100),
       notes: (icpLine + String(out.notes ?? '')).slice(0, 2000),
       upvoteBump: clamp(Math.round(out.upvoteBump), 0, 30),
+      perPersona,
     };
   }
 
