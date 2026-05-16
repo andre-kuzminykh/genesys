@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useServer } from '../ServerStore';
+import { ScrollToTop } from '../components/ScrollToTop';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
 import { ArrowRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
@@ -22,6 +23,8 @@ const COVERS = [
   { from: '#9DFF40', to: '#FFB05A' },
   { from: '#82A0FF', to: '#5EE6A8' },
 ];
+
+const LANDING_PAGE_SIZE = 10;
 
 function hashStr(s: string): number {
   let h = 0;
@@ -753,7 +756,7 @@ function FlatMetric({ label, value, tone, prefix = '' }: { label: string; value:
 // ---------- Landing ----------
 
 export function Landing() {
-  const { state } = useStore();
+  const { state, logout } = useStore();
   const scores = useScores();
   const published = useMemo(
     () => scores.filter((s) => s.startup.published && s.startup.batchId === state.activeBatchId),
@@ -781,6 +784,8 @@ export function Landing() {
 
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [visibleCards, setVisibleCards] = useState(LANDING_PAGE_SIZE);
+  useEffect(() => { setVisibleCards(LANDING_PAGE_SIZE); }, [query, tags]);
 
   const list = useMemo(() => {
     const startups = published.map((p) => p.startup);
@@ -864,14 +869,25 @@ export function Landing() {
           </Link>
           <ThemeToggle />
           {myHandle ? (
-            <Link
-              to="/onboarding/repo"
-              title={`Open your repositories — signed in as @${myHandle}`}
-              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
-            >
-              <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
-              Connected
-            </Link>
+            <>
+              <Link
+                to="/onboarding/repo"
+                title={`Open your repositories — signed in as @${myHandle}`}
+                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
+              >
+                <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
+                Connected
+              </Link>
+              <button
+                type="button"
+                onClick={() => logout()}
+                title={`Sign out @${myHandle}`}
+                aria-label={`Sign out @${myHandle}`}
+                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display text-sm font-bold text-textsec transition hover:border-danger/40 hover:text-danger"
+              >
+                <XIcon size={12} /> Sign out
+              </button>
+            </>
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
           )}
@@ -892,7 +908,7 @@ export function Landing() {
 
       <main className="mx-auto max-w-5xl px-6 pb-16 pt-10">
         <ul className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {list.map(({ startup }) => (
+          {list.slice(0, visibleCards).map(({ startup }) => (
             <li key={startup.id}>
               <ListCard
                 startup={startup}
@@ -912,7 +928,21 @@ export function Landing() {
             </li>
           ) : null}
         </ul>
+
+        {list.length > visibleCards ? (
+          <div className="mt-8 flex justify-center">
+            <button
+              onClick={() => setVisibleCards((n) => n + LANDING_PAGE_SIZE)}
+              className="ghost-button"
+              type="button"
+            >
+              Load more · {list.length - visibleCards} hidden
+            </button>
+          </div>
+        ) : null}
       </main>
+
+      <ScrollToTop />
 
       {open ? (
         <DetailDialog

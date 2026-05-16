@@ -3,12 +3,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
+import { ScrollToTop } from '../components/ScrollToTop';
 import { Wordmark } from '../components/Wordmark';
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 import { listAndScan, type RealScan } from '@/domain/github';
 
 type ScanRow = { fullName: string; language: string | null; stars: number; pushedDaysAgo: number; defaultBranch: string; isPrivate: boolean; scan: RepoScanResult };
+
+const PAGE_SIZE = 15;
 
 function fromMock(r: MockRepo): ScanRow {
   return {
@@ -39,7 +42,7 @@ function fromReal(s: RealScan): ScanRow {
 }
 
 export function PickRepo() {
-  const { state, myRepos } = useStore();
+  const { state, myRepos, logout } = useStore();
   const nav = useNavigate();
   const me = state.session?.handle;
   const token = state.session?.accessToken;
@@ -47,6 +50,8 @@ export function PickRepo() {
   const [rows, setRows] = useState<ScanRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [visibleRepos, setVisibleRepos] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleRepos(PAGE_SIZE); }, [query]);
 
   const mockRows = useMemo(() => myRepos().map(fromMock), [myRepos]);
 
@@ -101,13 +106,16 @@ export function PickRepo() {
             <GithubIcon size={14} className="text-textsec" />
             <span>signed in as <span className="font-mono text-neon-500">@{me}</span></span>
           </span>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm transition hover:border-neon-500/40 hover:text-neon-500"
+          <button
+            type="button"
+            onClick={() => { logout(); nav('/'); }}
+            title={`Sign out @${me}`}
+            aria-label={`Sign out @${me}`}
+            className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm transition hover:border-danger/40 hover:text-danger"
           >
-            <XIcon size={14} className="text-textsec" />
-            <span>Cancel</span>
-          </Link>
+            <XIcon size={12} className="text-textsec" />
+            <span>Sign out</span>
+          </button>
         </div>
       </header>
 
@@ -134,30 +142,27 @@ export function PickRepo() {
           </div>
         ) : (
           <>
-            {/* Search box — shows up only when there's enough rows to be useful */}
+            {/* Search box — full width of the rows below it. */}
             {rows.length > 5 ? (
-              <div className="mt-7 flex items-center justify-between gap-3">
-                <div className="flex flex-1 items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
-                  <SearchIcon />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search owner/repo or language…"
-                    className="flex-1 bg-transparent outline-none placeholder:text-textsec font-mono text-sm"
-                    spellCheck={false}
-                  />
-                  {query ? (
-                    <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear">
-                      <XIcon size={12} />
-                    </button>
-                  ) : null}
-                </div>
-                <span className="display-mono whitespace-nowrap">{filteredRows!.length} of {rows.length}</span>
+              <div className="mt-7 flex w-full items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
+                <SearchIcon />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search owner/repo or language…"
+                  className="flex-1 bg-transparent outline-none placeholder:text-textsec font-mono text-sm"
+                  spellCheck={false}
+                />
+                {query ? (
+                  <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear">
+                    <XIcon size={12} />
+                  </button>
+                ) : null}
               </div>
             ) : null}
 
             <ul className="mt-5 space-y-3">
-              {filteredRows!.map((row) => (
+              {filteredRows!.slice(0, visibleRepos).map((row) => (
                 <RepoRow key={row.fullName} row={row} onPick={() => continueWith(row)} />
               ))}
               {filteredRows!.length === 0 ? (
@@ -168,9 +173,22 @@ export function PickRepo() {
                 </li>
               ) : null}
             </ul>
+
+            {filteredRows!.length > visibleRepos ? (
+              <div className="mt-5 flex justify-center">
+                <button
+                  onClick={() => setVisibleRepos((n) => n + PAGE_SIZE)}
+                  className="ghost-button"
+                  type="button"
+                >
+                  Load more · {filteredRows!.length - visibleRepos} hidden
+                </button>
+              </div>
+            ) : null}
           </>
         )}
       </section>
+      <ScrollToTop />
     </div>
   );
 }

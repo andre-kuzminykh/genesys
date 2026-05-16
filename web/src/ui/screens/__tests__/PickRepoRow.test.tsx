@@ -58,16 +58,16 @@ describe('TEST-GEN-200 — PickRepo row chrome', () => {
     }
   });
 
-  it('shows the Cancel link as a pill that matches the "signed in as" pill in sizing', () => {
+  it('shows the Sign-out button as a pill that matches the "signed in as" pill in sizing', () => {
     renderPickRepo('alice');
     const signedIn = screen.getByText(/signed in as/i).closest('span.inline-flex') as HTMLElement;
-    const cancel = screen.getByRole('link', { name: /^cancel$/i });
+    const signOut = screen.getByRole('button', { name: /sign out/i });
 
     // Both pills should share the small text + py-1.5 px-3 sizing so they read
     // as the same control class in the header.
     for (const cls of ['text-sm', 'px-3', 'py-1.5', 'rounded-full']) {
       expect(signedIn.className).toContain(cls);
-      expect(cancel.className).toContain(cls);
+      expect(signOut.className).toContain(cls);
     }
   });
 });
