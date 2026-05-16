@@ -744,7 +744,7 @@ function ConnectedMenu({ handle, onSignOut }: { handle: string; onSignOut: () =>
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Close when the user clicks outside the menu.
+  // Close when the user clicks outside the menu or hits Escape.
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
@@ -763,36 +763,42 @@ function ConnectedMenu({ handle, onSignOut }: { handle: string; onSignOut: () =>
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={`Signed in as @${handle}`}
+        title={`Signed in as @${handle} — click for sign-out`}
         className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
       >
         <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
         Connected
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          aria-hidden
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
       </button>
 
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-surfaceLight bg-surface shadow-2xl"
+          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-surfaceLight bg-surface shadow-2xl"
         >
           <div className="border-b border-surfaceLight px-4 py-3 text-xs text-textsec">
             signed in as <span className="font-mono text-neon-500">@{handle}</span>
           </div>
-          <Link
-            to="/onboarding/repo"
-            onClick={() => setOpen(false)}
-            className="block w-full px-4 py-2.5 text-left text-sm transition hover:bg-surfaceLight hover:text-neon-500"
-            role="menuitem"
-          >
-            <GithubIcon size={14} className="mr-2 inline" /> Open my repos
-          </Link>
           <button
             type="button"
             onClick={() => { setOpen(false); onSignOut(); }}
-            className="block w-full px-4 py-2.5 text-left text-sm text-textsec transition hover:bg-danger/10 hover:text-danger"
+            className="block w-full px-4 py-2.5 text-left text-sm font-bold text-textsec transition hover:bg-danger/10 hover:text-danger"
             role="menuitem"
           >
             <XIcon size={12} className="mr-2 inline" /> Sign out
