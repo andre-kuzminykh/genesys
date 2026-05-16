@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../AppStore';
 import { Wordmark } from '../components/Wordmark';
+import { Footer } from '../components/Footer';
+import { CookieBanner } from '../components/CookieBanner';
 import { SparkleIcon } from '../design/Icon';
 
 export function AuthSuccess() {
@@ -30,20 +32,24 @@ export function AuthSuccess() {
   }, [loginWithToken, nav]);
 
   return (
-    <div className="grid min-h-screen place-items-center px-6">
-      <div className="text-center">
-        <Wordmark size="xl" />
-        <div className="mt-8 flex items-center justify-center gap-2 text-textsec">
-          <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow" />
-          <SparkleIcon className="text-neon-500" />
-          <span>Signing you in with GitHub…</span>
-        </div>
-        {error ? (
-          <div className="mx-auto mt-6 max-w-md rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-            {error}
+    <div className="flex min-h-screen flex-col">
+      <div className="grid flex-1 place-items-center px-6">
+        <div className="text-center">
+          <Wordmark size="xl" />
+          <div className="mt-8 flex items-center justify-center gap-2 text-textsec">
+            <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow" />
+            <SparkleIcon className="text-neon-500" />
+            <span>Signing you in with GitHub…</span>
           </div>
-        ) : null}
+          {error ? (
+            <div className="mx-auto mt-6 max-w-md rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+              {error}
+            </div>
+          ) : null}
+        </div>
       </div>
+      <Footer />
+      <CookieBanner />
     </div>
   );
 }

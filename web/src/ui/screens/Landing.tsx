@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useServer } from '../ServerStore';
 import { ScrollToTop } from '../components/ScrollToTop';
+import { Footer } from '../components/Footer';
+import { CookieBanner } from '../components/CookieBanner';
 import { useInfinitePagination } from '../hooks/useInfinitePagination';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
@@ -185,13 +187,16 @@ function CoverArea({ name, height, badge }: { name: string; height: number; badg
 }
 
 function HashChips({ tags, onClick, limit = 6, dense = false }: { tags: string[]; onClick?: (t: string) => void; limit?: number; dense?: boolean }) {
+  // Single horizontal scroll-strip — same shape as the hashtag bar under the
+  // search box. Each chip is shrink-0 + whitespace-nowrap so the row never
+  // wraps and the user swipes/scrolls sideways when there are more than fit.
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="-mx-2 flex items-center gap-1.5 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tags.slice(0, limit).map((t) => (
         <button
           key={t}
           onClick={(e) => { e.stopPropagation(); onClick?.(t); }}
-          className={`rounded-full border border-surfaceLight bg-base ${dense ? 'px-2 py-0.5' : 'px-2.5 py-1'} text-[10px] font-bold uppercase tracking-wider text-textsec transition hover:text-neon-500 hover:border-neon-500/40`}
+          className={`shrink-0 whitespace-nowrap rounded-full border border-surfaceLight bg-base ${dense ? 'px-2 py-0.5' : 'px-2.5 py-1'} text-[10px] font-bold uppercase tracking-wider text-textsec transition hover:text-neon-500 hover:border-neon-500/40`}
         >
           #{t}
         </button>
@@ -360,8 +365,10 @@ function ListCard({
         >
           {startup.name}
         </h3>
-        <div className="mt-3"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
-        <p className="mt-3 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
+        <div className="mt-3"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={50} dense /></div>
+        <p className="mt-3 whitespace-pre-line text-[15px] text-textsec leading-relaxed">
+          {((startup.description ?? startup.pitch) || '').slice(0, 2000)}
+        </p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
           {/* Upvote — plain arrow + number, no border/pill. One vote per browser;
@@ -560,7 +567,7 @@ function DetailDialog({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-3xl font-extrabold">{startup.name}</h2>
-              <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={12} /></div>
+              <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={50} /></div>
             </div>
             {/* Upvote moved out of the cover overlay so it can't be hit by the
                 prev/next viewport-edge nav buttons on smaller screens. */}
@@ -932,6 +939,8 @@ export function Landing() {
       </main>
 
       <ScrollToTop />
+      <Footer />
+      <CookieBanner />
 
       {open ? (
         <DetailDialog

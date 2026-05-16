@@ -4,6 +4,8 @@ import { useStore } from '../AppStore';
 import { Wordmark } from '../components/Wordmark';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
+import { Footer } from '../components/Footer';
+import { CookieBanner } from '../components/CookieBanner';
 import { LineChart, ChartLegend } from '../components/LineChart';
 import { ChartIcon, GithubIcon, RocketIcon, SparkleIcon, TrophyIcon } from '../design/Icon';
 import {
@@ -416,6 +418,8 @@ export function Leaderboard() {
           </>
         ) : null}
       </main>
+      <Footer />
+      <CookieBanner />
     </div>
   );
 }

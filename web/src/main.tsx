@@ -28,6 +28,8 @@ import { Admin } from './ui/screens/Admin';
 import { PickRepo } from './ui/screens/PickRepo';
 import { ComingSoon } from './ui/screens/ComingSoon';
 import { AuthSuccess } from './ui/screens/AuthSuccess';
+import { Terms } from './ui/screens/Terms';
+import { Privacy } from './ui/screens/Privacy';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -42,6 +44,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/login" element={<Login />} />
           <Route path="/auth/success" element={<AuthSuccess />} />
           <Route path="/denied" element={<Denied />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           {/* onboarding (gated, no app layout) */}
           <Route path="/onboarding/repo" element={<AuthGate><PickRepo /></AuthGate>} />

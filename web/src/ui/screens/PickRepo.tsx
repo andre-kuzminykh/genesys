@@ -6,6 +6,8 @@ import { Chip } from '../components/Chip';
 import { ScrollToTop } from '../components/ScrollToTop';
 import { useInfinitePagination } from '../hooks/useInfinitePagination';
 import { Wordmark } from '../components/Wordmark';
+import { Footer } from '../components/Footer';
+import { CookieBanner } from '../components/CookieBanner';
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 import { listAndScan, type RealScan } from '@/domain/github';
@@ -201,6 +203,8 @@ export function PickRepo() {
         )}
       </section>
       <ScrollToTop />
+      <Footer />
+      <CookieBanner />
     </div>
   );
 }

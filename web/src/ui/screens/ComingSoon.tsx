@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Wordmark } from '../components/Wordmark';
+import { Footer } from '../components/Footer';
+import { CookieBanner } from '../components/CookieBanner';
 import { RocketIcon, ArrowRightIcon, GithubIcon, SparkleIcon } from '../design/Icon';
 
 type IncomingState = {
@@ -54,6 +56,8 @@ export function ComingSoon() {
           </div>
         </div>
       </main>
+      <Footer />
+      <CookieBanner />
     </div>
   );
 }
