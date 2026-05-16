@@ -1,12 +1,14 @@
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-// Rendered height in CSS px per size. width auto-scales from the image's
-// intrinsic aspect ratio.
-const HEIGHT: Record<Size, number> = {
-  sm: 22,
-  md: 32,
-  lg: 56,
-  xl: 128,
+// Picture height in CSS px + cursor dimensions per size. The cursor sits
+// to the LEFT of the image and aligns with the image's bottom edge, lifted
+// by `cursorMb` so it lands near the typographic baseline of the lettering
+// inside the artwork.
+const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; gap: number }> = {
+  sm: { h: 22,  cursorW: 5,  cursorH: 2, cursorMb: 3,  gap: 4 },
+  md: { h: 32,  cursorW: 7,  cursorH: 2, cursorMb: 5,  gap: 6 },
+  lg: { h: 56,  cursorW: 12, cursorH: 3, cursorMb: 9,  gap: 10 },
+  xl: { h: 128, cursorW: 26, cursorH: 6, cursorMb: 20, gap: 20 },
 };
 
 // Hosted brand asset. Drop a local copy at web/public/wordmark.png and
@@ -15,34 +17,52 @@ const WORDMARK_URL =
   'https://i.ibb.co/nq3ppQVz/Chat-GPT-Image-May-16-2026-02-21-52-AM.png';
 
 /**
- * Brand wordmark — a single raster picture. No programmatic text, no
- * absolute-positioned cursor. The asset is expected to contain the full
- * "_ genesys" lock-up already.
+ * Brand wordmark — a raster picture of the "genesys" lettering with a
+ * blinking neon cursor rendered next to it in CSS.
  *
- * The `withCursor` and `blink` props are kept for call-site compatibility
- * but are no-ops now that the cursor is baked into the artwork.
+ * The cursor is a separate element (not baked into the artwork) so the
+ * blink animation can drive it. The artwork is bottom-aligned with the
+ * cursor via `align-items: flex-end`; the cursor gets a small bottom
+ * margin so it lands on the typographic baseline of the lettering.
  */
 export function Wordmark({
   size = 'md',
   className = '',
+  blink = true,
+  withCursor = true,
 }: {
   size?: Size;
   className?: string;
-  /** @deprecated cursor is baked into the artwork */
   blink?: boolean;
-  /** @deprecated cursor is baked into the artwork */
   withCursor?: boolean;
 }) {
-  const h = HEIGHT[size];
+  const s = SIZES[size];
   return (
-    <img
-      src={WORDMARK_URL}
-      alt="Genesys"
-      height={h}
-      className={`inline-block align-middle ${className}`}
-      style={{ height: h, width: 'auto', display: 'block' }}
-      draggable={false}
-    />
+    <span
+      className={`inline-flex items-end align-middle ${className}`}
+      style={{ gap: withCursor ? s.gap : 0 }}
+      aria-label="Genesys"
+    >
+      {withCursor ? (
+        <span
+          aria-hidden
+          className={`block rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
+          style={{
+            width: s.cursorW,
+            height: s.cursorH,
+            marginBottom: s.cursorMb,
+            boxShadow: '0 0 14px rgba(127,255,0,0.55)',
+          }}
+        />
+      ) : null}
+      <img
+        src={WORDMARK_URL}
+        alt="Genesys"
+        height={s.h}
+        style={{ height: s.h, width: 'auto', display: 'block' }}
+        draggable={false}
+      />
+    </span>
   );
 }
 
