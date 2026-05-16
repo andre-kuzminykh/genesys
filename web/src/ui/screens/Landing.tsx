@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
-import { GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
+import { ArrowRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
 import { remainingCredits } from '@/domain/investments';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
@@ -133,6 +133,42 @@ function ScreenshotMock({ from, to, variant }: { from: string; to: string; varia
         </>)}
       </svg>
     </div>
+  );
+}
+
+function PitchMediaTile({ kind, href, accent }: { kind: 'pdf' | 'video'; href: string; accent: string }) {
+  const label = kind === 'pdf' ? 'Pitch deck' : 'Demo video';
+  const ext = kind === 'pdf' ? 'pitch.pdf' : 'video.mp4';
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative flex h-32 items-center gap-3 overflow-hidden rounded-2xl border border-surfaceLight bg-surface px-4 py-3 transition hover:border-neon-500/40"
+    >
+      <div
+        className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-ink"
+        style={{ background: accent }}
+      >
+        {kind === 'pdf' ? (
+          <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+            <path d="M14 3v5h5" />
+            <path d="M8 13h8M8 17h5" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width={28} height={28} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <rect x={3} y={5} width={18} height={14} rx={3} />
+            <path d="M10 9l5 3-5 3z" fill="currentColor" />
+          </svg>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-display text-lg font-extrabold">{label}</div>
+        <div className="mt-1 font-mono text-xs text-textsec">{ext}</div>
+      </div>
+      <ArrowRightIcon />
+    </a>
   );
 }
 
@@ -523,38 +559,46 @@ function DetailDialog({
           <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 rounded-full bg-base/80 p-2 text-white hover:bg-base">
             <XIcon size={14} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpvote(); }}
-            aria-label={voted ? 'Remove upvote' : 'Upvote'}
-            aria-pressed={voted}
-            className={`absolute bottom-3 right-3 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${popping ? 'animate-upvotePop' : ''}`}
-          >
-            <UpArrow
-              size={22}
-              className={voted ? 'text-neon-500' : 'text-white/70'}
-              style={voted ? { transform: 'rotate(180deg)' } : undefined}
-            />
-            <span className="font-display text-2xl font-extrabold leading-none">{upvotes}</span>
-          </button>
         </div>
 
         <div className="px-7 pt-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="font-display text-3xl font-extrabold">{startup.name}</h2>
               <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={12} /></div>
             </div>
+            {/* Upvote moved out of the cover overlay so it can't be hit by the
+                prev/next viewport-edge nav buttons on smaller screens. */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpvote(); }}
+              aria-label={voted ? 'Remove upvote' : 'Upvote'}
+              aria-pressed={voted}
+              className={`shrink-0 inline-flex items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-3 py-2 transition hover:border-neon-500/40 ${voted ? 'text-neon-500' : 'text-textsec'} ${popping ? 'animate-upvotePop' : ''}`}
+            >
+              <UpArrow
+                size={20}
+                style={voted ? { transform: 'rotate(180deg)' } : undefined}
+              />
+              <span className="font-display text-xl font-extrabold leading-none">{upvotes}</span>
+            </button>
           </div>
 
           <p className="mt-5 font-display text-lg leading-snug">{startup.pitch}</p>
         </div>
 
         <div className="pt-6">
-          <div className="px-7 pb-3 display-mono">screenshots</div>
-          <div className="flex gap-3 overflow-x-auto px-7 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {[0, 1, 2, 3].map((v) => (
-              <ScreenshotMock key={v} from={cover.from} to={cover.to} variant={v as 0 | 1 | 2 | 3} />
-            ))}
+          <div className="px-7 pb-3 display-mono">pitch & demo</div>
+          <div className="grid grid-cols-1 gap-3 px-7 pb-2 sm:grid-cols-2">
+            <PitchMediaTile
+              kind="pdf"
+              href={`https://github.com/${startup.repo}/blob/main/pitch.pdf`}
+              accent={cover.from}
+            />
+            <PitchMediaTile
+              kind="video"
+              href={`https://github.com/${startup.repo}/blob/main/video.mp4`}
+              accent={cover.to}
+            />
           </div>
         </div>
 
@@ -575,9 +619,21 @@ function DetailDialog({
           </div>
         ) : null}
 
-        {/* Invest block */}
+        {/* Open the repo on GitHub before the money flow. */}
         <div className="px-7 pt-7">
-          <div className="rounded-2xl border border-surfaceLight bg-base p-5">
+          <a
+            href={startup.landingUrl ?? `https://github.com/${startup.repo}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ghost-button w-full justify-center"
+          >
+            <GithubIcon size={16} /> Open project on GitHub <ArrowRightIcon />
+          </a>
+        </div>
+
+        {/* Invest block */}
+        <div className="px-7 pt-5 pb-7">
+          <div className="rounded-2xl border border-surfaceLight bg-base p-6">
             {!me ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
