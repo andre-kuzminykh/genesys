@@ -136,6 +136,17 @@ describe('TEST-GEN-222 — /api/invest', () => {
     assert.equal(r.json.error, 'SELF_INVEST_FORBIDDEN');
   });
 
+  it('lets the admin back every startup including their own', async () => {
+    const r = await jsonReq('/api/invest', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token-andre-kuzminykh' },
+      body: JSON.stringify({ startupId: 'S-tonloans', amount: 5_000 }),
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.investment.investorHandle, 'andre-kuzminykh');
+    assert.equal(r.json.investment.startupId, 'S-tonloans');
+  });
+
   it('records an investment and updates the wallet remaining', async () => {
     const r = await jsonReq('/api/invest', {
       method: 'POST',

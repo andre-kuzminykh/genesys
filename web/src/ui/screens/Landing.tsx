@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { useServer } from '../ServerStore';
 import { ScrollToTop } from '../components/ScrollToTop';
+import { useInfinitePagination } from '../hooks/useInfinitePagination';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
 import { ArrowRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
@@ -739,6 +740,69 @@ function DetailDialog({
   );
 }
 
+function ConnectedMenu({ handle, onSignOut }: { handle: string; onSignOut: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close when the user clicks outside the menu.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`Signed in as @${handle}`}
+        className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
+      >
+        <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
+        Connected
+      </button>
+
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-surfaceLight bg-surface shadow-2xl"
+        >
+          <div className="border-b border-surfaceLight px-4 py-3 text-xs text-textsec">
+            signed in as <span className="font-mono text-neon-500">@{handle}</span>
+          </div>
+          <Link
+            to="/onboarding/repo"
+            onClick={() => setOpen(false)}
+            className="block w-full px-4 py-2.5 text-left text-sm transition hover:bg-surfaceLight hover:text-neon-500"
+            role="menuitem"
+          >
+            <GithubIcon size={14} className="mr-2 inline" /> Open my repos
+          </Link>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); onSignOut(); }}
+            className="block w-full px-4 py-2.5 text-left text-sm text-textsec transition hover:bg-danger/10 hover:text-danger"
+            role="menuitem"
+          >
+            <XIcon size={12} className="mr-2 inline" /> Sign out
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function FlatMetric({ label, value, tone, prefix = '' }: { label: string; value: number; tone: string; prefix?: string }) {
   const n = Math.round(value);
   const display =
@@ -784,8 +848,6 @@ export function Landing() {
 
   const [query, setQuery] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [visibleCards, setVisibleCards] = useState(LANDING_PAGE_SIZE);
-  useEffect(() => { setVisibleCards(LANDING_PAGE_SIZE); }, [query, tags]);
 
   const list = useMemo(() => {
     const startups = published.map((p) => p.startup);
@@ -795,6 +857,12 @@ export function Landing() {
     const filtered = published.filter((p) => ids.has(p.startup.id));
     return [...filtered].sort((a, b) => upvoteOf(b.startup.id) - upvoteOf(a.startup.id));
   }, [published, tags, query, upvoteOf]);
+
+  const { visible: visibleCards, sentinelRef: cardsSentinelRef } = useInfinitePagination(
+    list.length,
+    LANDING_PAGE_SIZE,
+    [query, tags.join('|')],
+  );
 
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const close = useCallback(() => setOpenIndex(null), []);
@@ -869,25 +937,7 @@ export function Landing() {
           </Link>
           <ThemeToggle />
           {myHandle ? (
-            <>
-              <Link
-                to="/onboarding/repo"
-                title={`Open your repositories — signed in as @${myHandle}`}
-                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
-              >
-                <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
-                Connected
-              </Link>
-              <button
-                type="button"
-                onClick={() => logout()}
-                title={`Sign out @${myHandle}`}
-                aria-label={`Sign out @${myHandle}`}
-                className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display text-sm font-bold text-textsec transition hover:border-danger/40 hover:text-danger"
-              >
-                <XIcon size={12} /> Sign out
-              </button>
-            </>
+            <ConnectedMenu handle={myHandle} onSignOut={logout} />
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
           )}
@@ -929,15 +979,10 @@ export function Landing() {
           ) : null}
         </ul>
 
+        <div ref={cardsSentinelRef} aria-hidden className="h-1" />
         {list.length > visibleCards ? (
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={() => setVisibleCards((n) => n + LANDING_PAGE_SIZE)}
-              className="ghost-button"
-              type="button"
-            >
-              Load more · {list.length - visibleCards} hidden
-            </button>
+          <div className="mt-6 text-center display-mono text-textsec">
+            loading {list.length - visibleCards} more…
           </div>
         ) : null}
       </main>

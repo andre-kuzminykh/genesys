@@ -4,6 +4,7 @@ import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
 import { ScrollToTop } from '../components/ScrollToTop';
+import { useInfinitePagination } from '../hooks/useInfinitePagination';
 import { Wordmark } from '../components/Wordmark';
 import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
@@ -50,8 +51,6 @@ export function PickRepo() {
   const [rows, setRows] = useState<ScanRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [visibleRepos, setVisibleRepos] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleRepos(PAGE_SIZE); }, [query]);
 
   const mockRows = useMemo(() => myRepos().map(fromMock), [myRepos]);
 
@@ -85,6 +84,12 @@ export function PickRepo() {
     return rows.filter((r) => r.fullName.toLowerCase().includes(q) || (r.language ?? '').toLowerCase().includes(q));
   }, [rows, query]);
 
+  const { visible: visibleRepos, sentinelRef } = useInfinitePagination(
+    filteredRows?.length ?? 0,
+    PAGE_SIZE,
+    [query, rows?.length],
+  );
+
   const continueWith = (row: ScanRow) => {
     if (row.scan.kind === 'found') {
       nav('/coming-soon', { state: { flow: 'import', repo: row.fullName } });
@@ -98,9 +103,18 @@ export function PickRepo() {
   return (
     <div className="relative min-h-screen">
       <header className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-6 py-5">
-        <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="xl" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link to="/" aria-label="Genesys home" className="shrink-0">
+            <Wordmark size="xl" />
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm transition hover:border-neon-500/40 hover:text-neon-500"
+          >
+            <span aria-hidden>←</span>
+            <span>Back to home</span>
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm">
             <GithubIcon size={14} className="text-textsec" />
@@ -174,15 +188,13 @@ export function PickRepo() {
               ) : null}
             </ul>
 
+            {/* Sentinel — when this scrolls into view, the hook bumps the
+                visible-count by PAGE_SIZE. Tiny but non-zero height so the
+                IntersectionObserver fires reliably. */}
+            <div ref={sentinelRef} aria-hidden className="h-1" />
             {filteredRows!.length > visibleRepos ? (
-              <div className="mt-5 flex justify-center">
-                <button
-                  onClick={() => setVisibleRepos((n) => n + PAGE_SIZE)}
-                  className="ghost-button"
-                  type="button"
-                >
-                  Load more · {filteredRows!.length - visibleRepos} hidden
-                </button>
+              <div className="mt-5 text-center display-mono text-textsec">
+                loading {filteredRows!.length - visibleRepos} more…
               </div>
             ) : null}
           </>

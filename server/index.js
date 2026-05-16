@@ -21,8 +21,10 @@ const CREDITS_PER_INVESTOR = 100000;
 // Cohort allowlist — kept in sync with web/src/data/seed.ts. Comparison is
 // case-insensitive because GitHub returns the canonical casing of the login
 // while users may type any variant.
+const ADMINS = new Set(['andre-kuzminykh']);
+
 const ALLOWLIST = new Set([
-  'andre-kuzminykh',
+  ...ADMINS,
   'artem-grigorash', 'artem3605', 'darkmechanikum', 'denksworkspace',
   'hspyroblast', 'kamaliyaal', 'kreativshikkk', 'mashan555',
   'maxlevitsky', 'mitya139', 'petrenkosofya', 'rusyaew',
@@ -227,7 +229,9 @@ app.post('/api/invest', async (req, res) => {
   }
 
   const owner = STARTUP_OWNERS[startupId];
-  if (owner && owner.toLowerCase() === login.toLowerCase()) {
+  // Admins can back every startup including the ones they own; regular cohort
+  // members can't put their own credits into their own project.
+  if (owner && owner.toLowerCase() === login.toLowerCase() && !ADMINS.has(login.toLowerCase())) {
     return res.status(400).json({ ok: false, error: 'SELF_INVEST_FORBIDDEN' });
   }
 
