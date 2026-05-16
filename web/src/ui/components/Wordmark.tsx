@@ -4,11 +4,11 @@ type Size = 'sm' | 'md' | 'lg' | 'xl';
 // to the LEFT of the image and aligns with the image's bottom edge, lifted
 // by `cursorMb` so it lands near the typographic baseline of the lettering
 // inside the artwork.
-const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; gap: number }> = {
-  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 8,  gap: 4 },
-  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 12, gap: 6 },
-  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 21, gap: 10 },
-  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 48, gap: 18 },
+const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; cursorMl: number; gap: number }> = {
+  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 9,  cursorMl: 3,  gap: 4 },
+  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 13, cursorMl: 5,  gap: 6 },
+  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 22, cursorMl: 9,  gap: 10 },
+  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 51, cursorMl: 20, gap: 18 },
 };
 
 // Hosted brand asset. Drop a local copy at web/public/wordmark.png and
@@ -51,6 +51,7 @@ export function Wordmark({
             width: s.cursorW,
             height: s.cursorH,
             marginBottom: s.cursorMb,
+            marginLeft: s.cursorMl,
             boxShadow: '0 0 14px rgba(127,255,0,0.55)',
           }}
         />

@@ -1128,6 +1128,52 @@ a backend so the key never lands in the client bundle.
 
 ---
 
+## 16. Brand picture wordmark + 2-column Landing grid (added 2026-05-16)
+
+### 16.1 Wordmark refactor
+
+The wordmark is no longer rendered as programmatic text — it is a single
+hosted raster picture (`WORDMARK_URL` in `web/src/ui/components/Wordmark.tsx`)
+paired with a CSS-rendered neon cursor block. The cursor sits to the LEFT
+of the picture in an `inline-flex` with `align-items: flex-end`; per-size
+`marginBottom` lifts it onto the typographic baseline of the lettering
+inside the picture, and per-size `marginLeft` nudges it horizontally so
+it visually anchors near the first letter rather than the picture edge.
+
+`withCursor` and `blink` props are retained on the component for call-site
+compatibility (every screen — Landing xl · Login xl · PickRepo lg ·
+AppLayout sm · AuthSuccess lg · ComingSoon lg · Leaderboard md — calls
+`<Wordmark size="…" />` and gets the picture automatically).
+
+### 16.2 Landing list grid
+
+The Landing list (everything below the Featured carousel) is now a
+responsive grid:
+
+- Mobile (`<md`): a single column, unchanged from before.
+- `md+`: two columns (`grid-cols-2`) with a 24 px gap.
+
+Cards in the two columns are allowed to have different heights — the grid
+intentionally does not enforce row alignment, per the user's "разнобой ok"
+note. The empty-state cell spans both columns (`md:col-span-2`).
+
+### 16.3 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-310 | `<Wordmark size="…" />` MUST render an `<img>` whose `src` resolves to the brand artwork and whose CSS `height` matches the per-size table. | TEST-GEN-160 |
+| FR-GEN-311 | `<Wordmark withCursor>` MUST render a neon block sibling with a positive `marginBottom` so it visually sits on the lettering baseline of the artwork. | TEST-GEN-213 |
+| FR-GEN-312 | The Landing list MUST render its cards in a 2-column grid at `md+` viewports and a single column on smaller screens. | TEST-GEN-214 |
+
+### 16.4 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Picture-based wordmark with CSS cursor | — | FR-GEN-310, FR-GEN-311 | TEST-GEN-160, TEST-GEN-213 |
+| Two-column Landing list grid | — | FR-GEN-312 | TEST-GEN-214 |
+
+---
+
 ## 14. Real GitHub authentication (added 2026-05-15)
 
 The mocked login is now a secondary path. The primary identity in the demo

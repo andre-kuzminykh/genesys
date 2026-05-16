@@ -851,7 +851,7 @@ export function Landing() {
       />
 
       <main className="mx-auto max-w-5xl px-6 pb-16 pt-10">
-        <ul className="flex flex-col gap-6">
+        <ul className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {list.map(({ startup }) => (
             <li key={startup.id}>
               <ListCard
@@ -867,7 +867,7 @@ export function Landing() {
             </li>
           ))}
           {list.length === 0 ? (
-            <li className="bento p-6 text-textsec">
+            <li className="bento p-6 text-textsec md:col-span-2">
               <SparkleIcon size={14} className="inline mr-1 text-neon-500" /> Nothing matches — clear filters or change the query.
             </li>
           ) : null}

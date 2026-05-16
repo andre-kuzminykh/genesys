@@ -20,3 +20,29 @@ describe('TEST-GEN-160 — Wordmark renders the hosted brand picture', () => {
     }
   });
 });
+
+describe('TEST-GEN-213 — Wordmark cursor sits on the baseline of the artwork', () => {
+  it('renders a neon cursor sibling with positive marginBottom + marginLeft so it lands on the lettering baseline, not the picture edge', () => {
+    const { container } = render(<Wordmark size="xl" />);
+    const wrapper = container.querySelector('[aria-label="Genesys"]') as HTMLElement;
+    expect(wrapper.className).toContain('inline-flex');
+    expect(wrapper.className).toContain('items-end');
+
+    const cursor = wrapper.querySelector('span[aria-hidden]') as HTMLElement;
+    expect(cursor).not.toBeNull();
+    expect(cursor.className).toContain('bg-neon-500');
+
+    const mb = parseFloat(cursor.style.marginBottom);
+    const ml = parseFloat(cursor.style.marginLeft);
+    expect(mb).toBeGreaterThan(0);
+    expect(ml).toBeGreaterThan(0);
+    // The xl cursor should sit well above the picture's bottom edge
+    // (artwork has bottom padding around the glyphs).
+    expect(mb).toBeGreaterThanOrEqual(40);
+  });
+
+  it('omits the cursor sibling when withCursor=false', () => {
+    const { container } = render(<Wordmark size="xl" withCursor={false} />);
+    expect(container.querySelector('span[aria-hidden]')).toBeNull();
+  });
+});
