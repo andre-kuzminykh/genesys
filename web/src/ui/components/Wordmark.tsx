@@ -5,10 +5,10 @@ type Size = 'sm' | 'md' | 'lg' | 'xl';
 // by `cursorMb` so it lands near the typographic baseline of the lettering
 // inside the artwork.
 const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; gap: number }> = {
-  sm: { h: 22,  cursorW: 5,  cursorH: 2, cursorMb: 3,  gap: 4 },
-  md: { h: 32,  cursorW: 7,  cursorH: 2, cursorMb: 5,  gap: 6 },
-  lg: { h: 56,  cursorW: 12, cursorH: 3, cursorMb: 9,  gap: 10 },
-  xl: { h: 128, cursorW: 26, cursorH: 6, cursorMb: 20, gap: 20 },
+  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 8,  gap: 4 },
+  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 12, gap: 6 },
+  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 21, gap: 10 },
+  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 48, gap: 18 },
 };
 
 // Hosted brand asset. Drop a local copy at web/public/wordmark.png and
