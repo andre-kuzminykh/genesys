@@ -130,6 +130,12 @@ export const XIcon = ({ size = 16, ...p }: IconProps) => (
   </svg>
 );
 
+export const ExternalLinkIcon = ({ size = 16, ...p }: IconProps) => (
+  <svg {...base(size)} {...p}>
+    <path d="M14 4h6v6M20 4l-9 9M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" />
+  </svg>
+);
+
 export const LockIcon = ({ size = 16, ...p }: IconProps) => (
   <svg {...base(size)} {...p}>
     <rect x="4" y="11" width="16" height="9" rx="2" />

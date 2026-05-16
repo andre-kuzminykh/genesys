@@ -4,7 +4,7 @@ import { useStore } from '../AppStore';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
 import { Wordmark } from '../components/Wordmark';
-import { ArrowRightIcon, CheckIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
+import { ArrowRightIcon, CheckIcon, ExternalLinkIcon, GithubIcon, RocketIcon, XIcon } from '../design/Icon';
 import { scanRepo, type MockRepo, type RepoScanResult } from '@/domain/repoScan';
 import { listAndScan, type RealScan } from '@/domain/github';
 
@@ -181,64 +181,60 @@ function SearchIcon() {
 function RepoRow({ row, onPick }: { row: ScanRow; onPick: () => void }) {
   return (
     <li className="bento p-5 transition hover:border-neon-500/30">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <GithubIcon size={14} className="text-textsec" />
-            <span className="font-mono text-base">{row.fullName}</span>
-            {row.language ? (
-              <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
-                {row.language}
-              </span>
-            ) : null}
-            {row.isPrivate ? (
-              <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
-                private
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-textsec">
-            <span>★ {row.stars}</span>
-            <span>· pushed {humanDays(row.pushedDaysAgo)}</span>
-            <span>· branch {row.defaultBranch}</span>
-          </div>
-          <ScanLine scan={row.scan} />
-        </div>
+      <div className="flex items-center gap-2">
+        <GithubIcon size={14} className="text-textsec" />
+        <a
+          href={`https://github.com/${row.fullName}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 font-mono text-base hover:text-neon-500 transition"
+        >
+          {row.fullName}
+          <ExternalLinkIcon size={12} className="text-textsec" />
+        </a>
+        {row.isPrivate ? (
+          <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
+            private
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1.5 text-xs text-textsec">
+        pushed {humanDays(row.pushedDaysAgo)} · branch {row.defaultBranch}
+      </div>
 
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <ScanChips scan={row.scan} />
         <PickButton scan={row.scan} onClick={onPick} />
       </div>
     </li>
   );
 }
 
-function ScanLine({ scan }: { scan: RepoScanResult }) {
+function ScanChips({ scan }: { scan: RepoScanResult }) {
   if (scan.kind === 'found') {
     return (
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Chip tone="green"><CheckIcon size={10} /> spec found</Chip>
-        <Chip tone="green"><CheckIcon size={10} /> tests found</Chip>
-        <span className="text-xs text-textsec">at <code className="font-mono">{scan.specPath}</code></span>
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip tone="green"><CheckIcon size={10} /> spec</Chip>
+        <Chip tone="green"><CheckIcon size={10} /> tests</Chip>
       </div>
     );
   }
   if (scan.kind === 'partial') {
     return (
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Chip tone={scan.specPath ? 'green' : 'amber'}>
           {scan.specPath ? <CheckIcon size={10} /> : <XIcon size={10} />} spec
         </Chip>
         <Chip tone={scan.testsPath ? 'green' : 'amber'}>
           {scan.testsPath ? <CheckIcon size={10} /> : <XIcon size={10} />} tests
         </Chip>
-        <span className="text-xs text-textsec">start from scratch — we'll fill the gap</span>
       </div>
     );
   }
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Chip tone="amber"><XIcon size={10} /> no spec</Chip>
       <Chip tone="amber"><XIcon size={10} /> no tests</Chip>
-      <span className="text-xs text-textsec">start from scratch — we'll bootstrap a fresh spec</span>
     </div>
   );
 }
