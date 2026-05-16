@@ -181,27 +181,29 @@ function SearchIcon() {
 function RepoRow({ row, onPick }: { row: ScanRow; onPick: () => void }) {
   return (
     <li className="bento p-4 transition hover:border-neon-500/30">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <GithubIcon size={14} className="text-textsec" />
-          <a
-            href={`https://github.com/${row.fullName}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 font-mono text-base hover:text-neon-500 transition"
-          >
-            {row.fullName}
-            <ExternalLinkIcon size={12} className="text-textsec" />
-          </a>
-          {row.isPrivate ? (
-            <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
-              private
-            </span>
-          ) : null}
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <GithubIcon size={14} className="text-textsec" />
+            <a
+              href={`https://github.com/${row.fullName}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-base hover:text-neon-500 transition"
+            >
+              {row.fullName}
+              <ExternalLinkIcon size={12} className="text-textsec" />
+            </a>
+            {row.isPrivate ? (
+              <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
+                private
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-2">
+            <ScanChips scan={row.scan} />
+          </div>
         </div>
-        <ScanChips scan={row.scan} />
-      </div>
-      <div className="mt-3 flex justify-center">
         <PickButton scan={row.scan} onClick={onPick} />
       </div>
     </li>
