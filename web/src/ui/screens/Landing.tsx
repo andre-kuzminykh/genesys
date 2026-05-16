@@ -42,9 +42,9 @@ function saveUpvotes(v: Record<string, true>) {
   try { localStorage.setItem(UPVOTE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
 }
 
-function UpArrow({ size = 16, className = '' }: { size?: number; className?: string }) {
+function UpArrow({ size = 16, className = '', style }: { size?: number; className?: string; style?: React.CSSProperties }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
       <path d="M12 5l-7 8h4v6h6v-6h4l-7-8z" />
     </svg>
   );
@@ -336,14 +336,15 @@ function ListCard({
         <p className="mt-3 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
-          {/* Upvote — plain arrow + number, no border/pill. One vote per browser; click again to undo. */}
+          {/* Upvote — plain arrow + number, no border/pill. One vote per browser;
+              clicking when voted flips the arrow to point down (= "undo"). */}
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
             className={`group inline-flex items-center gap-1.5 transition hover:text-neon-500 ${voted ? 'text-neon-500' : 'text-textsec'} ${popping ? 'animate-upvotePop' : ''}`}
             aria-label={voted ? 'Remove upvote' : 'Upvote'}
             aria-pressed={voted}
           >
-            <UpArrow size={18} />
+            <UpArrow size={18} style={voted ? { transform: 'rotate(180deg)' } : undefined} />
             <span className="font-display text-lg font-extrabold leading-none">{upvotes}</span>
           </button>
 
@@ -525,9 +526,14 @@ function DetailDialog({
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
             aria-label={voted ? 'Remove upvote' : 'Upvote'}
+            aria-pressed={voted}
             className={`absolute bottom-3 right-3 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${popping ? 'animate-upvotePop' : ''}`}
           >
-            <UpArrow size={22} className={voted ? 'text-neon-500' : 'text-white/70'} />
+            <UpArrow
+              size={22}
+              className={voted ? 'text-neon-500' : 'text-white/70'}
+              style={voted ? { transform: 'rotate(180deg)' } : undefined}
+            />
             <span className="font-display text-2xl font-extrabold leading-none">{upvotes}</span>
           </button>
         </div>
@@ -710,17 +716,11 @@ export function Landing() {
   const [upvotes, setUpvotes] = useState<Record<string, true>>(() => loadUpvotes());
   const [popping, setPopping] = useState<string | null>(null);
 
-  const baseline = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const { startup, score } of published) {
-      m[startup.id] = 8 + Math.round((score.investorDemand / 100) * 32);
-    }
-    return m;
-  }, [published]);
-
+  // Pure per-browser vote count. No simulated baseline — every startup
+  // starts at 0 and only the user's single click can move it to 1.
   const upvoteOf = useCallback(
-    (id: string) => (upvotes[id] ? 1 : 0) + (baseline[id] ?? 0),
-    [upvotes, baseline],
+    (id: string) => (upvotes[id] ? 1 : 0),
+    [upvotes],
   );
   const hasVoted = useCallback((id: string) => Boolean(upvotes[id]), [upvotes]);
 
