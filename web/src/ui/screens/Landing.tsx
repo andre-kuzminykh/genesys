@@ -332,8 +332,8 @@ function ListCard({
         >
           {startup.name}
         </h3>
-        <div className="mt-2"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
-        <p className="mt-4 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
+        <div className="-mt-0.5"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
+        <p className="mt-3 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
           {/* Upvote — plain arrow + number, no border/pill. One vote per browser; click again to undo. */}
