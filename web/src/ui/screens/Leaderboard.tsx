@@ -164,7 +164,7 @@ export function Leaderboard() {
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-5">
         <Link to="/" aria-label="Genesys home">
-          <Wordmark size="md" />
+          <Wordmark size="xl" />
         </Link>
         <div className="flex items-center gap-3">
           <Link to="/" className="ghost-button"><SparkleIcon /> Browse cohort</Link>

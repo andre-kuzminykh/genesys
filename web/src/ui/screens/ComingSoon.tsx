@@ -18,7 +18,7 @@ export function ComingSoon() {
     <div className="relative min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <Link to="/" aria-label="Genesys home">
-          <Wordmark size="lg" />
+          <Wordmark size="xl" />
         </Link>
         <Link to="/onboarding/repo" className="ghost-button"><GithubIcon /> Pick another repo</Link>
       </header>
@@ -36,7 +36,7 @@ export function ComingSoon() {
             {flow === 'import' && repo
               ? <>We detected the spec & tests in <span className="font-mono text-neon-500">{repo}</span>. The dashboard that imports them is on its way.</>
               : flow === 'scratch'
-                ? <>Starting <span className="font-mono text-neon-500">{startupName ?? 'a new startup'}</span> from scratch — the spec generator is on its way.</>
+                ? <>The startup builder for <span className="font-mono text-neon-500">{startupName ?? 'your new project'}</span> is on its way — we'll launch it soon.</>
                 : <>The dashboard you tried to open is on its way. Come back shortly.</>}
           </p>
 
@@ -50,7 +50,7 @@ export function ComingSoon() {
           </div>
 
           <div className="display-mono mt-10">
-            <ArrowRightIcon size={10} className="inline" /> Ожидайте — спец и тесты подцепим в следующем релизе
+            <ArrowRightIcon size={10} className="inline" /> Spec & tests will be imported in the next release
           </div>
         </div>
       </main>

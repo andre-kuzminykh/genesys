@@ -32,7 +32,7 @@ export function AuthSuccess() {
   return (
     <div className="grid min-h-screen place-items-center px-6">
       <div className="text-center">
-        <Wordmark size="lg" />
+        <Wordmark size="xl" />
         <div className="mt-8 flex items-center justify-center gap-2 text-textsec">
           <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow" />
           <SparkleIcon className="text-neon-500" />
