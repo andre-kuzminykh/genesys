@@ -9,6 +9,7 @@ import { CookieBanner } from '../components/CookieBanner';
 import { LineChart, ChartLegend } from '../components/LineChart';
 import { ChartIcon, GithubIcon, RocketIcon, SparkleIcon, TrophyIcon } from '../design/Icon';
 import {
+  compositeScore,
   MockLlmAdapter,
   runSimulation,
   type SimulationResult,
@@ -136,17 +137,26 @@ export function Leaderboard() {
       ? new OpenAILlmAdapter({ apiKey: BAKED_OPENAI_KEY, model: BAKED_OPENAI_MODEL })
       : new MockLlmAdapter();
 
-    setStage('analysing 16 cohort startups…');
-    setDrainSpeed(450);
+    setStage('');
+    setDrainSpeed(550);
 
-    // Compact analysis feed: ONE narrative line per startup (no per-phase
-    // chatter). The interesting stuff lands during the monthly reveal.
-    let analysed = 0;
+    // Analysis phase: show the robot doing live research on each startup.
+    // No per-phase result chatter, no internal numbers — just a stream of
+    // "🤖 NAME — researching X…" lines so the audience sees activity until
+    // the year-long news tape starts.
+    const phaseLabel: Record<string, string> = {
+      user:      'sitting down an ICP user panel',
+      market:    'crawling the live web for market signals',
+      forecast:  'modelling the 13-month growth curve',
+      narrative: 'writing the year-long news ticker',
+      recommend: 'drafting the 30/60/90 founder plan',
+    };
     const onEvent = (e: import('@/domain/simulation').SimulationEvent) => {
-      if (e.kind === 'startup-done') {
-        analysed += 1;
-        logActivity(`🤖 (${analysed}/${startups.length}) ${e.startupName} analysed — ${e.endUsers.toLocaleString()} users, $${e.totalRevenueUSD.toLocaleString()}/yr forecast`);
+      if (e.kind === 'phase-start') {
+        logActivity(`🤖 ${e.startupName} — ${phaseLabel[e.phase] ?? 'researching'}…`);
       }
+      // phase-done and startup-done are intentionally silent here; the
+      // interesting output happens once the month-by-month reveal kicks in.
     };
 
     let result: SimulationResult;
@@ -160,8 +170,8 @@ export function Leaderboard() {
 
     saveCached(result);
     setForecast(result);
-    await drainNow();
-    logActivity(`✨ All ${startups.length} startups analysed. Rolling the month-by-month tape now…`);
+    queueRef.current = [];
+    logActivity(`🤖 Research complete — rolling the year-long news tape…`);
     await drainNow();
 
     // Month-by-month reveal — for each month: stream one news line per
@@ -186,6 +196,7 @@ export function Leaderboard() {
         const cur = f.monthly[i - 1]!;
         const prev = i > 1 ? f.monthly[i - 2]! : { users: 0, revenueUSD: 0 } as { users: number; revenueUSD: number };
         const du = cur.users - prev.users;
+        const dr = cur.revenueUSD - prev.revenueUSD;
         const ev = f.events?.find((x) => x.month === ym);
         const head =
           i === 1 ? '🚀' :
@@ -195,9 +206,15 @@ export function Leaderboard() {
           (prev.users < 1000 && cur.users >= 1000) ? '🌠' :
           (prev.users > 0 && du / prev.users > 0.3) ? '📈' :
           '📰';
-        const date = monthLabel(ym);
-        const text = ev?.event ?? `${f.startupName}: ${cur.users.toLocaleString()} users, $${cur.revenueUSD.toLocaleString()} this month.`;
-        logActivity(`${head} ${date} · ${text}`);
+        const usersStr  = `${Math.abs(du) >= 1000 ? Math.round(Math.abs(du) / 1000) + 'k' : Math.abs(du)}`;
+        const revStr    = `$${Math.abs(dr) >= 1000 ? Math.round(Math.abs(dr) / 1000) + 'k' : Math.abs(dr).toLocaleString()}`;
+        const userVerb  = du >= 0 ? 'gained' : 'lost';
+        const revVerb   = dr >= 0 ? 'earned' : 'burned';
+        // Compose a news-headline-style sentence using forecast deltas + the
+        // LLM-generated "by …" cause clause (or a safe fallback when the LLM
+        // returned nothing for this month).
+        const cause = ev?.event ?? 'shipped incremental improvements this month.';
+        logActivity(`${head} ${f.startupName} ${userVerb} ${usersStr} users and ${revVerb} ${revStr} — ${cause}`);
       }
 
       // Wait for the dripper to finish emitting THIS month's events before
@@ -218,7 +235,13 @@ export function Leaderboard() {
   // map forecasts onto startups (preserve display order matching ranking)
   const ranked = useMemo(() => {
     if (!forecast) return [];
-    return [...forecast.startups].sort((a, b) => b.totalRevenueUSD - a.totalRevenueUSD);
+    // Same composite-score ordering used inside runSimulation to pick the
+    // winner, so #1 in this list is always the actual winner. Tie-break by
+    // total revenue for stability.
+    return [...forecast.startups].sort((a, b) => {
+      const d = compositeScore(b) - compositeScore(a);
+      return d !== 0 ? d : (b.totalRevenueUSD - a.totalRevenueUSD);
+    });
   }, [forecast]);
 
   const seriesUsers = useMemo(() => {
@@ -254,37 +277,38 @@ export function Leaderboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        {/* Single-line news ticker on the left of the row, run/running CTA on
-            the right. Same width as everything else on the page. */}
+        {/* Single-line news ticker — full page width, round Run button baked
+            into the right edge of the same surface. */}
         <section className="mt-6">
-          <div className="flex items-stretch gap-3">
-            <div className="flex-1 min-w-0 rounded-2xl border border-surfaceLight bg-surface px-4 py-3">
+          <div className="flex items-center gap-3 rounded-full border border-surfaceLight bg-surface py-2 pl-5 pr-2">
+            {busy ? (
+              <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-neon-500 animate-pulseGlow" />
+            ) : null}
+            <div className="min-w-0 flex-1">
               <div
                 key={currentLine}
-                className="flex items-center gap-2 font-mono text-sm text-textsec animate-tickerFade"
+                className="truncate font-mono text-sm text-textsec animate-tickerFade"
               >
-                {busy ? (
-                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-neon-500 animate-pulseGlow" />
-                ) : null}
-                <span className="truncate">
-                  {currentLine ||
-                    (busy ? 'spinning up the panel…'
-                          : forecast ? 'last run complete — hit Re-run to refresh'
-                                     : 'idle — hit Run to start the cohort simulation')}
-                </span>
+                {currentLine ||
+                  (busy ? 'spinning up the panel…'
+                        : forecast ? 'last run complete — hit ▶ to refresh'
+                                   : 'idle — hit ▶ to start the cohort simulation')}
               </div>
             </div>
             <button
               onClick={run}
               disabled={busy}
-              className="neon-button shrink-0 disabled:opacity-60"
+              aria-label={busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
+              title={busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-neon-500 text-ink shadow-neon transition hover:bg-neon-400 disabled:opacity-60"
             >
-              <SparkleIcon /> {busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
+              {busy ? (
+                <span className="inline-block h-4 w-4 rounded-full border-2 border-ink/30 border-t-ink animate-spin" />
+              ) : (
+                <SparkleIcon size={20} />
+              )}
             </button>
           </div>
-          {stage ? (
-            <div className="mt-2 px-1 font-mono text-[11px] uppercase tracking-wider text-textsec">{stage}</div>
-          ) : null}
         </section>
 
         {adapterErr ? (
@@ -362,9 +386,12 @@ export function Leaderboard() {
                   <Chip tone="yellow" icon={<TrophyIcon size={12} />}>best startup</Chip>
                   <h2 className="mt-3 font-display text-2xl font-extrabold leading-tight">{forecast.winner.startupName}</h2>
                   <p className="mt-2 text-sm text-textsec">{forecast.winner.reasoning}</p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Stat label="End users" value={ranked.find((r) => r.startupId === forecast.winner.startupId)?.endUsers.toLocaleString() ?? '—'} />
-                    <Stat label="Year revenue" value={fmtUSD(ranked.find((r) => r.startupId === forecast.winner.startupId)?.totalRevenueUSD ?? 0)} />
+                  <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+                    <span className="display-mono">End users</span>
+                    <span className="font-display text-lg font-extrabold">{ranked.find((r) => r.startupId === forecast.winner.startupId)?.endUsers.toLocaleString() ?? '—'}</span>
+                    <span className="text-textsec">·</span>
+                    <span className="display-mono">Year revenue</span>
+                    <span className="font-display text-lg font-extrabold">{fmtUSD(ranked.find((r) => r.startupId === forecast.winner.startupId)?.totalRevenueUSD ?? 0)}</span>
                   </div>
                 </Bento>
 
@@ -377,9 +404,12 @@ export function Leaderboard() {
                       ${bestInvestor.invested.toLocaleString()} — the highest revenue-weighted portfolio score
                       in the cohort.
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Stat label="Picks" value={bestInvestor.picks} />
-                      <Stat label="Invested" value={fmtUSD(bestInvestor.invested)} />
+                    <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+                      <span className="display-mono">Picks</span>
+                      <span className="font-display text-lg font-extrabold">{bestInvestor.picks}</span>
+                      <span className="text-textsec">·</span>
+                      <span className="display-mono">Invested</span>
+                      <span className="font-display text-lg font-extrabold">{fmtUSD(bestInvestor.invested)}</span>
                     </div>
                   </Bento>
                 ) : (
@@ -416,8 +446,8 @@ export function Leaderboard() {
                           <span className="display-mono">Year rev.</span>
                           <span className="font-display text-lg font-extrabold">{fmtUSD(f.totalRevenueUSD)}</span>
                           <span className="text-textsec">·</span>
-                          <span className="display-mono">+upvotes</span>
-                          <span className="font-display text-lg font-extrabold text-signal-green">+{f.userReview.upvoteBump}</span>
+                          <span className="display-mono">Upvotes</span>
+                          <span className="font-display text-lg font-extrabold text-signal-green">{f.userReview.upvoteBump}</span>
                         </div>
                       </div>
 

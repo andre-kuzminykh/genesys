@@ -341,7 +341,7 @@ export async function runSimulation(
   };
 }
 
-function compositeScore(f: StartupForecast): number {
+export function compositeScore(f: StartupForecast): number {
   return (
     f.userReview.score * 0.35 +
     f.marketReview.score * 0.35 +
