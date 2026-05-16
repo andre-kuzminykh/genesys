@@ -26,6 +26,7 @@ import { Portfolio } from './ui/screens/Portfolio';
 import { Admin } from './ui/screens/Admin';
 import { PickRepo } from './ui/screens/PickRepo';
 import { ComingSoon } from './ui/screens/ComingSoon';
+import { AuthSuccess } from './ui/screens/AuthSuccess';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -37,6 +38,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<Landing />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/auth/success" element={<AuthSuccess />} />
           <Route path="/denied" element={<Denied />} />
 
           {/* onboarding (gated, no app layout) */}

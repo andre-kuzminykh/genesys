@@ -4,16 +4,14 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        # Pulled from a .env file at the project root (gitignored).
-        # Leave blank if you don't want OpenAI calls; the simulator will use a
-        # deterministic mock instead.
         VITE_OPENAI_API_KEY: "${VITE_OPENAI_API_KEY:-}"
-        VITE_OPENAI_MODEL:   "${VITE_OPENAI_MODEL:-gpt-4o-mini}"
+        VITE_OPENAI_MODEL:   "${VITE_OPENAI_MODEL:-gpt-4o}"
     image: genesys-startup-studio:latest
     container_name: genesys-web
     restart: unless-stopped
+    depends_on:
+      - auth
     ports:
-      # host:container — override via env: GENESIS_PORT=8027 docker compose up -d
       - "${GENESIS_PORT:-8026}:80"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/"]
@@ -21,3 +19,18 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+
+  auth:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: genesys-auth:latest
+    container_name: genesys-auth
+    restart: unless-stopped
+    environment:
+      GITHUB_CLIENT_ID:     "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      PUBLIC_URL:           "${PUBLIC_URL:-http://34.62.139.101:8026}"
+      PORT: "3000"
+    expose:
+      - "3000"

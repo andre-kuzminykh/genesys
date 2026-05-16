@@ -81,17 +81,27 @@ export function Login() {
               </div>
             </div>
 
-            <form onSubmit={submit} className="mt-7 space-y-3">
-              <label className="label" htmlFor="ghtoken">GitHub token</label>
+            <a href="/auth/github" className="neon-button mt-6 w-full text-base">
+              <GithubIcon /> Continue with GitHub
+            </a>
+            <div className="display-mono text-center">redirects to github.com · returns signed-in</div>
+
+            <div className="my-5 flex items-center gap-3 text-xs text-textsec">
+              <span className="h-px flex-1 bg-surfaceLight" />
+              <span>or paste a token / demo handle</span>
+              <span className="h-px flex-1 bg-surfaceLight" />
+            </div>
+
+            <form onSubmit={submit} className="space-y-3">
+              <label className="label" htmlFor="ghtoken">GitHub token or handle</label>
               <div className="flex items-center gap-2 rounded-2xl border border-surfaceLight bg-base px-3 py-2.5 focus-within:border-neon-500/60">
                 <span className="text-textsec">@</span>
                 <input
                   id="ghtoken"
                   value={value}
                   onChange={(e) => { setValue(e.target.value); setError(null); }}
-                  placeholder="ghp_… or github_pat_…"
+                  placeholder="ghp_… or github_pat_… or a handle"
                   className="flex-1 bg-transparent outline-none placeholder:text-textsec"
-                  autoFocus
                   autoComplete="off"
                   spellCheck={false}
                 />
@@ -104,8 +114,8 @@ export function Login() {
                 </div>
               ) : null}
 
-              <button type="submit" disabled={busy} className="neon-button mt-2 w-full disabled:opacity-60">
-                <GithubIcon /> {busy ? 'Verifying…' : 'Continue'}
+              <button type="submit" disabled={busy} className="ghost-button mt-2 w-full disabled:opacity-60">
+                {busy ? 'Verifying…' : 'Continue'}
               </button>
 
               <details className="text-xs text-textsec">

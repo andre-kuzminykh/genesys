@@ -17,9 +17,9 @@ function bootstrapSession(handle: string) {
   );
   unmount();
 
-  const stored = JSON.parse(localStorage.getItem('genesys:v0.6') ?? '{}');
+  const stored = JSON.parse(localStorage.getItem('genesys:v0.7') ?? '{}');
   stored.session = { handle, loggedInAt: Date.now() };
-  localStorage.setItem('genesys:v0.6', JSON.stringify(stored));
+  localStorage.setItem('genesys:v0.7', JSON.stringify(stored));
 }
 
 function renderLanding() {
@@ -51,7 +51,7 @@ describe('TEST-GEN-190 — wallet + invest UI', () => {
     const user = userEvent.setup();
     // Open the carousel featured (it's the first openable). The simplest way is
     // to click on a list card heading.
-    const auroras = screen.getAllByText('Aurora');
+    const auroras = screen.getAllByText('ArtRise');
     expect(auroras.length).toBeGreaterThan(0);
     await user.click(auroras[auroras.length - 1]!);
 

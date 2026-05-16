@@ -794,7 +794,7 @@ export function Landing() {
     <div className="min-h-screen">
       <header className="mx-auto grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="lg" />
+          <Wordmark size="xl" />
         </Link>
 
         <div className="flex justify-center">
@@ -836,7 +836,14 @@ export function Landing() {
           )}
           <ThemeToggle />
           {myHandle ? (
-            <Link to="/onboarding/repo" className="ghost-button shrink-0"><GithubIcon /> @{myHandle}</Link>
+            <Link
+              to="/onboarding/repo"
+              title={`Open your repositories — signed in as @${myHandle}`}
+              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
+            >
+              <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
+              Connected
+            </Link>
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
           )}

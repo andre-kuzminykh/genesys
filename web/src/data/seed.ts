@@ -64,23 +64,33 @@ function buildSpec(startupId: string, idea: string, category: string, ownerHandl
 
 export function seedState(): AppState {
   const users: User[] = [
-    { handle: 'admin', name: 'Demo Admin', role: 'admin', avatarSeed: 'admin' },
-    { handle: 'alice', name: 'Alice Chen', role: 'founder', avatarSeed: 'alice' },
-    { handle: 'bob', name: 'Bob Rivera', role: 'founder', avatarSeed: 'bob' },
-    { handle: 'carol', name: 'Carol Müller', role: 'founder', avatarSeed: 'carol' },
-    { handle: 'dmitry', name: 'Dmitry K.', role: 'founder', avatarSeed: 'dmitry' },
-    { handle: 'eva', name: 'Eva Park', role: 'founder', avatarSeed: 'eva' },
-    { handle: 'frank', name: 'Frank Okoye', role: 'founder', avatarSeed: 'frank' },
-    { handle: 'grace', name: 'Grace Sato', role: 'founder', avatarSeed: 'grace' },
-    { handle: 'henry', name: 'Henry Adler', role: 'founder', avatarSeed: 'henry' },
-    { handle: 'ivy', name: 'Ivy Tran', role: 'founder', avatarSeed: 'ivy' },
-    { handle: 'jack', name: 'Jack Romero', role: 'founder', avatarSeed: 'jack' },
+    { handle: 'andre-kuzminykh',  name: 'Andre Kuzminykh',  role: 'admin',   avatarSeed: 'andre-kuzminykh' },
+    { handle: 'artem-grigorash',  name: 'Artem Grigorash',  role: 'founder', avatarSeed: 'artem-grigorash' },
+    { handle: 'artem3605',        name: 'Artem (3605)',     role: 'founder', avatarSeed: 'artem3605' },
+    { handle: 'darkmechanikum',   name: 'Dark Mechanikum',  role: 'founder', avatarSeed: 'darkmechanikum' },
+    { handle: 'denksworkspace',   name: 'Denks',            role: 'founder', avatarSeed: 'denksworkspace' },
+    { handle: 'hspyroblast',      name: 'HSPyroblast',      role: 'founder', avatarSeed: 'hspyroblast' },
+    { handle: 'kamaliyaal',       name: 'Kamaliya',         role: 'founder', avatarSeed: 'kamaliyaal' },
+    { handle: 'kreativshikkk',    name: 'Kreativshikkk',    role: 'founder', avatarSeed: 'kreativshikkk' },
+    { handle: 'mashan555',        name: 'Mashan',           role: 'founder', avatarSeed: 'mashan555' },
+    { handle: 'maxlevitsky',      name: 'Max Levitsky',     role: 'founder', avatarSeed: 'maxlevitsky' },
+    { handle: 'mitya139',         name: 'Mitya',            role: 'founder', avatarSeed: 'mitya139' },
+    { handle: 'petrenkosofya',    name: 'Sofya Petrenko',   role: 'founder', avatarSeed: 'petrenkosofya' },
+    { handle: 'rusyaew',          name: 'Rusyaew',          role: 'founder', avatarSeed: 'rusyaew' },
+    { handle: 'somethingnew179',  name: 'Something New',    role: 'founder', avatarSeed: 'somethingnew179' },
+    { handle: 'weethet',          name: 'WeetHet',          role: 'founder', avatarSeed: 'weethet' },
   ];
 
   const batch = {
     id: 'B1',
     name: 'GENESYS-001 · May Cohort',
-    allowlist: ['andre-kuzminykh', 'admin', 'alice', 'bob', 'carol', 'dmitry', 'eva', 'frank', 'grace', 'henry', 'ivy', 'jack'],
+    allowlist: [
+      'andre-kuzminykh',
+      'artem-grigorash', 'artem3605', 'darkmechanikum', 'denksworkspace',
+      'hspyroblast', 'kamaliyaal', 'kreativshikkk', 'mashan555',
+      'maxlevitsky', 'mitya139', 'petrenkosofya', 'rusyaew',
+      'somethingnew179', 'weethet',
+    ],
     creditsPerInvestor: 100000,
     selfInvestPolicy: 'FORBIDDEN' as const,
     weights: DEFAULT_WEIGHTS,
@@ -90,164 +100,180 @@ export function seedState(): AppState {
   const day = 86400000;
   const startups: Startup[] = [
     {
-      id: 'S-aurora', batchId: 'B1', ownerHandle: 'alice', name: 'Aurora',
-      category: 'Coding',
-      hashtags: ['devtools', 'spec-first', 'ai-ops', 'b2b', 'github', 'tdd'],
-      pitch: 'Spec-first startup OS for AI-native founders.',
-      description: `Aurora turns a one-line idea into a versioned, traceable product specification — Features, Stories, Use Cases, BDD scenarios, FR/NFR and Test stubs with stable IDs — and keeps it synchronised with your GitHub repository.
-
-An AI Analyst conducts a guided interview, fills the spec hierarchy from your answers, and immediately renders a live Mermaid architecture (layers, ERD, data-flow). Each edit is a new version with a visible diff, reason and author; previous versions never get silently overwritten.
-
-Once the spec exists, Aurora becomes the contract for code. Claude Code / SuperAgent reads /genesys/spec and /genesys/tests, writes implementation that satisfies the tests, and Aurora reads back the health: spec completeness, traceability coverage, persona-satisfaction simulation. Teams ship faster because the spec is machine-readable and stays in lockstep with code.`,
-      landingUrl: 'https://aurora.studio', repo: 'genesys-org/aurora',
-      published: true, createdAt: Date.now() - day * 6,
-      techExecution: 78, marketPotential: 70, pitchScore: 66, currentMode: 'MODE-3',
-    },
-    {
-      id: 'S-nebula', batchId: 'B1', ownerHandle: 'bob', name: 'Nebula',
-      category: 'Sales',
-      hashtags: ['customer-ops', 'ai-agents', 'shopify', 'd2c', 'automation', 'b2b'],
-      pitch: 'Agentic customer ops for D2C brands.',
-      description: `Nebula deploys a team of autonomous agents that triage inbound customer questions across email, chat and social DMs, draft replies in your brand voice, and escalate edge cases to humans with full conversation context attached.
-
-Designed for Shopify-scale D2C teams (100k+ orders/month) that need to keep CSAT high without growing the support headcount linearly. Out of the box: order lookups, return policies, restock alerts, sizing help, multilingual support.
-
-The agents learn from every human-approved reply, so the share of fully-automated answers climbs week over week. Nebula ships with safety rails — refund caps, escalation triggers, an audit log of every action — so ops leaders can trust the autonomy.`,
-      landingUrl: 'https://nebula.app', repo: 'genesys-org/nebula',
-      published: true, createdAt: Date.now() - day * 5,
-      techExecution: 60, marketPotential: 65, pitchScore: 58, currentMode: 'MODE-2',
-    },
-    {
-      id: 'S-pulse', batchId: 'B1', ownerHandle: 'carol', name: 'Pulse',
-      category: 'Data',
-      hashtags: ['llm-evals', 'observability', 'monitoring', 'devtools', 'b2b'],
-      pitch: 'Real-time AI evals for production LLM apps.',
-      description: `Pulse runs continuous, deterministic evaluations against your live LLM traffic so you catch hallucination spikes, schema-validation drops, refusal regressions and tool-call failures before users do.
-
-Drop the Pulse SDK in your prompt pipeline — Python or TypeScript — and every request is tagged, scored against your eval suite, and surfaced in a real-time dashboard with cohorting by prompt version, model version and customer segment.
-
-When an eval regresses below your threshold, Pulse alerts via Slack/PagerDuty, can auto-roll-back to the last-good prompt, and writes a post-mortem with the diff and the failing examples. Plays nicely with OpenAI, Anthropic, Google and your in-house models.`,
-      landingUrl: 'https://pulse.dev', repo: 'genesys-org/pulse',
-      published: true, createdAt: Date.now() - day * 4,
-      techExecution: 82, marketPotential: 72, pitchScore: 70, currentMode: 'MODE-4',
-    },
-    {
-      id: 'S-orbit', batchId: 'B1', ownerHandle: 'dmitry', name: 'Orbit',
-      category: 'Productivity',
-      hashtags: ['hardware', 'copilot', 'productivity', 'b2b'],
-      pitch: 'AI co-pilot for hardware founders.',
-      description: `Orbit is a private workspace that turns scattered BOMs, datasheets, supplier emails and revision threads into a structured project graph. One founder can coordinate a 20-person mechanical / electrical / firmware team without losing the thread.
-
-The co-pilot answers "what changed in revision C?", "which parts are at risk of going EOL?", "what is the price impact if we swap MCU vendor?". Behind the scenes it pulls from your Notion, Google Drive, Slack, and supplier portals.
-
-Currently in MODE-1 — the spec is still being formed. Targeting hardware studios building consumer electronics and robotics.`,
-      landingUrl: 'https://orbit.engineering',
-      published: false, createdAt: Date.now() - day * 2,
-      techExecution: 45, marketPotential: 55, pitchScore: 40, currentMode: 'MODE-1',
-    },
-
-    {
-      id: 'S-lumen', batchId: 'B1', ownerHandle: 'eva', name: 'Lumen',
+      id: 'S-artrise', batchId: 'B1', ownerHandle: 'artem-grigorash', name: 'ArtRise',
       category: 'Image',
-      hashtags: ['image-gen', 'design', 'marketing', 'brand-kit', 'b2b'],
-      pitch: 'Generative product mockups in seconds.',
-      description: `Lumen turns a one-line brief into a coordinated pack of brand-consistent product mockups: hero shots, lifestyle scenes, ad creatives for Meta and TikTok, and packshots for marketplaces — all in your real brand kit, not the internet's average aesthetic.
+      hashtags: ['image-gen', 'design', 'brand-kit', 'b2c', 'creators'],
+      pitch: 'AI art studio that turns rough sketches into finished illustrations.',
+      description: `ArtRise lets creators upload a quick sketch (paper or digital) and ship a clean, brand-coherent illustration in minutes. Style packs (line-art, flat, painterly, pixel) drive the look; safety filters block IP-violating styles.
 
-Upload your fonts, colours, product photos and reference moodboards once. Lumen learns the brand from them and refuses to drift; an automatic safety check rejects any output that violates your style guide.
+Daily creators get a feed of remix prompts; pro creators bring their own moodboard and lock the model into their visual identity.
 
-Used by D2C brands to compress a 2-week shoot into a 20-minute prompt — and by agencies to keep 30 clients on-brand without 30 designers.`,
-      landingUrl: 'https://lumen.studio', repo: 'genesys-org/lumen',
+Targets indie illustrators, social-media artists, and small studios that need 5-10 finished pieces a week without burning 5-10 hours each.`,
+      landingUrl: 'https://github.com/Artem-Grigorash/ArtRise', repo: 'Artem-Grigorash/ArtRise',
       published: true, createdAt: Date.now() - day * 7,
-      techExecution: 70, marketPotential: 68, pitchScore: 64, currentMode: 'MODE-3',
+      techExecution: 72, marketPotential: 68, pitchScore: 64, currentMode: 'MODE-3',
     },
     {
-      id: 'S-echo', batchId: 'B1', ownerHandle: 'frank', name: 'Echo',
-      category: 'Audio',
-      hashtags: ['audio', 'voice', 'podcasting', 'ai-voice', 'b2c'],
-      pitch: 'Studio-quality AI voice for podcasters.',
-      description: `Echo restores a 10-minute raw interview into broadcast-grade audio: cleans background noise, evens loudness across speakers, removes filler words ("um", "like", "you know"), tightens pauses, and ships a master ready for Spotify / Apple Podcasts.
+      id: 'S-shelfly', batchId: 'B1', ownerHandle: 'artem3605', name: 'Shelfly',
+      category: 'Productivity',
+      hashtags: ['inventory', 'ocr', 'ai-vision', 'b2c', 'home'],
+      pitch: 'Snap a shelf, get a catalogued inventory.',
+      description: `Shelfly turns one photo of a bookshelf, pantry, or storage room into a searchable inventory. Vision model identifies titles, brands and expiry dates; the user accepts/edits before sync.
 
-Optional voice clone, fully consent-gated: with the host's explicit permission and a 60-second voice sample, Echo can re-render the show in 24 languages while preserving the speaker's prosody — and watermarks every generated clip so listeners always know it's AI.
-
-Built for indie podcasters who don't have an audio engineer, and for podcast networks that publish 50 shows a week.`,
-      landingUrl: 'https://echo.fm', repo: 'genesys-org/echo',
-      published: true, createdAt: Date.now() - day * 9,
-      techExecution: 64, marketPotential: 60, pitchScore: 55, currentMode: 'MODE-2',
+Built for collectors (books, vinyl, board games), pantry-trackers who hate IFTTT-style chores, and small e-commerce sellers who run their stockroom from a phone.`,
+      landingUrl: 'https://github.com/artem3605/Shelfly', repo: 'artem3605/Shelfly',
+      published: true, createdAt: Date.now() - day * 5,
+      techExecution: 60, marketPotential: 58, pitchScore: 55, currentMode: 'MODE-2',
     },
     {
-      id: 'S-vector', batchId: 'B1', ownerHandle: 'grace', name: 'Vector',
-      category: 'Research',
-      hashtags: ['research', 'literature-review', 'academic', 'ai-search', 'b2b'],
-      pitch: 'AI literature review for academic teams.',
-      description: `Vector ingests a research question, finds the relevant papers across PubMed, ArXiv, OpenAlex and PubMed Central, ranks them by relevance and recency, and produces a grounded literature review with inline citations and a confidence score per claim.
-
-Every claim is traceable back to the exact passage in the source paper. If Vector cannot find supporting evidence, it says so — no hallucinated citations.
-
-Built for academic labs, R&D teams in biotech and pharma, and competitive-intelligence analysts who need a defensible audit trail of "where did this conclusion come from?".`,
-      landingUrl: 'https://vector.research', repo: 'genesys-org/vector',
-      published: true, createdAt: Date.now() - day * 3,
-      techExecution: 72, marketPotential: 60, pitchScore: 62, currentMode: 'MODE-3',
-    },
-    {
-      id: 'S-brisk', batchId: 'B1', ownerHandle: 'henry', name: 'Brisk',
-      category: 'Marketing',
-      hashtags: ['marketing', 'campaigns', 'personalization', 'growth', 'b2b'],
-      pitch: 'Personalized campaign drafts for 1M users.',
-      description: `Brisk segments your customer base by behaviour, drafts per-segment email and push campaigns in your brand voice, and predicts uplift before send via a hold-out simulation.
-
-The growth team reviews the drafts and predictions side by side, approves or edits in one click, and Brisk schedules the send across your existing stack (Customer.io, Braze, Klaviyo, Iterable). Post-send, it auto-reads results and proposes the next iteration.
-
-Built for consumer apps with 100k+ active users where 1-segment-fits-all campaigns leak 5–10% of conversion. Pricing is uplift-based: pay only on the incremental revenue Brisk's experiment beats the control.`,
-      landingUrl: 'https://brisk.ai', repo: 'genesys-org/brisk',
-      published: true, createdAt: Date.now() - day * 1,
-      techExecution: 58, marketPotential: 75, pitchScore: 60, currentMode: 'MODE-2',
-    },
-    {
-      id: 'S-quill', batchId: 'B1', ownerHandle: 'ivy', name: 'Quill',
-      category: 'Writing',
-      hashtags: ['writing', 'long-form', 'rag', 'grounded', 'b2c'],
-      pitch: 'Long-form drafts grounded in your sources.',
-      description: `Quill writes blog posts, internal memos and whitepapers grounded in the documents you upload — never on the open internet. Drop in PDFs, Notion pages, Google Docs or paste research notes; Quill drafts the long-form output with inline citations to your sources.
-
-A "fact-check" pass flags every unsupported claim before you publish, with the source list each conclusion does (or does not) sit on. Reviewers see a side-by-side diff for every edit.
-
-Used by analyst teams, technical writers and content marketers who need to publish long-form fast but cannot afford a single hallucinated stat.`,
-      landingUrl: 'https://quill.dev', repo: 'genesys-org/quill',
-      published: true, createdAt: Date.now() - day * 8,
-      techExecution: 56, marketPotential: 58, pitchScore: 55, currentMode: 'MODE-2',
-    },
-    {
-      id: 'S-ember', batchId: 'B1', ownerHandle: 'jack', name: 'Ember',
+      id: 'S-ailab', batchId: 'B1', ownerHandle: 'darkmechanikum', name: 'AI Lab HW',
       category: 'Education',
-      hashtags: ['education', 'tutor', 'k12', 'stem', 'ai-tutor'],
-      pitch: '1-on-1 AI tutor for K-12 STEM.',
-      description: `Ember diagnoses the student's actual gap with a short adaptive interview (5–7 questions, ~3 minutes), then drives a Socratic conversation that never spoils the answer — only the next question.
+      hashtags: ['education', 'stem', 'ai-tutor', 'k12', 'lab'],
+      pitch: 'AI lab assistant for STEM students.',
+      description: `AI Lab HW reads the student's assignment, walks them through the lab procedure step by step (without giving the answer), and renders quick simulations for the predicted outcome.
 
-Aligned with US Common Core and UK National Curriculum standards, Ember covers maths, physics, chemistry and biology for grades 4–12. The tutor tracks each skill independently and surfaces a weekly mastery report to the parent, plus a "what to try next" recommendation.
+Covers physics, chemistry and intro CS. Teachers can pre-approve a problem set and watch where students get stuck class-wide.`,
+      landingUrl: 'https://github.com/DarkMechanikum/AILABHW', repo: 'DarkMechanikum/AILABHW',
+      published: true, createdAt: Date.now() - day * 8,
+      techExecution: 66, marketPotential: 64, pitchScore: 58, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-bte', batchId: 'B1', ownerHandle: 'denksworkspace', name: 'Beat the Engine',
+      category: 'Education',
+      hashtags: ['chess', 'ai-coach', 'training', 'b2c', 'esports'],
+      pitch: 'Drill the openings you keep losing — until you beat the engine.',
+      description: `Beat the Engine spots the lines you blunder repeatedly, builds a tailored spaced-repetition opening tree, and plays you in a downscaled engine that targets exactly the level above yours.
 
-Built for parents who want a personal tutor for under $30/month, and for after-school programs that need a per-student curriculum without per-student headcount.`,
-      landingUrl: 'https://ember.school', repo: 'genesys-org/ember',
-      published: true, createdAt: Date.now() - day * 10,
-      techExecution: 62, marketPotential: 70, pitchScore: 58, currentMode: 'MODE-3',
+Once you win three games on the line, the tree promotes harder branches. Built for the 1200-2000 Elo bracket where opening prep moves the needle the most.`,
+      landingUrl: 'https://github.com/denksworkspace/beat-the-engine', repo: 'denksworkspace/beat-the-engine',
+      published: true, createdAt: Date.now() - day * 4,
+      techExecution: 70, marketPotential: 55, pitchScore: 60, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-albion', batchId: 'B1', ownerHandle: 'hspyroblast', name: 'Albion Advisor',
+      category: 'Gaming',
+      hashtags: ['mmo', 'esports', 'advisor', 'b2c', 'market'],
+      pitch: 'Live market + build advisor for Albion Online.',
+      description: `Albion Advisor reads cross-server market prices in real time, computes profit margins on the most-traded crafted items, and recommends the routes a player should take given their tier and silver budget.
+
+Build tab pulls top meta builds for the current patch with patch-note explanations and suggested counters. The killboard module flags ganking hotspots near your transport routes.`,
+      landingUrl: 'https://github.com/HSPyroblast/Albion_advisor', repo: 'HSPyroblast/Albion_advisor',
+      published: true, createdAt: Date.now() - day * 6,
+      techExecution: 62, marketPotential: 50, pitchScore: 58, currentMode: 'MODE-2',
+    },
+    {
+      id: 'S-calenmind', batchId: 'B1', ownerHandle: 'kamaliyaal', name: 'CalenMind',
+      category: 'Productivity',
+      hashtags: ['calendar', 'ai-agents', 'scheduling', 'b2c', 'wellbeing'],
+      pitch: 'A calendar that schedules around your energy, not the other way round.',
+      description: `CalenMind learns your daily energy curve (deep-work, social, recovery) from a tiny daily check-in and an optional wearable, then automatically slots meetings, errands, and focus blocks into the right time of day.
+
+Conflicts are resolved with one tap: keep, reschedule, decline. The weekly review shows you where the calendar ate your peak hours.`,
+      landingUrl: 'https://github.com/KamaliyaAl/CalenMind', repo: 'KamaliyaAl/CalenMind',
+      published: true, createdAt: Date.now() - day * 3,
+      techExecution: 64, marketPotential: 70, pitchScore: 62, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-invalerts', batchId: 'B1', ownerHandle: 'kreativshikkk', name: 'InvestmentsAlert',
+      category: 'Finance',
+      hashtags: ['fintech', 'alerts', 'retail', 'b2c', 'trading'],
+      pitch: 'Deduplicated smart alerts when your watchlist actually moves.',
+      description: `InvestmentsAlert filters out the routine 0.3% noise and only pings you when a holding crosses an important technical / news / earnings threshold. Each alert ships with a 30-second context note: what moved, why, and what people on the same trade are doing.
+
+Pro tier integrates with broker accounts to suggest position sizing within the user's pre-declared risk.`,
+      landingUrl: 'https://github.com/Kreativshikkk/InvestmentsAlert', repo: 'Kreativshikkk/InvestmentsAlert',
+      published: true, createdAt: Date.now() - day * 2,
+      techExecution: 68, marketPotential: 72, pitchScore: 64, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-stylify', batchId: 'B1', ownerHandle: 'mashan555', name: 'Stylify',
+      category: 'Design',
+      hashtags: ['fashion', 'ai-stylist', 'b2c', 'wardrobe'],
+      pitch: 'An AI stylist that builds outfits from photos of your closet.',
+      description: `Snap your wardrobe once. Stylify catalogues every item, then dresses you for any occasion — work, gym, date, travel — combining only pieces you actually own.
+
+Weekly capsule planner outputs 7 outfits for the week ahead given the weather forecast and your calendar. Shopping suggestions only fire when a missing piece would unlock 5+ outfits.`,
+      landingUrl: 'https://github.com/mashan555/Stylify', repo: 'mashan555/Stylify',
+      published: true, createdAt: Date.now() - day * 9,
+      techExecution: 58, marketPotential: 65, pitchScore: 55, currentMode: 'MODE-2',
+    },
+    {
+      id: 'S-clutchup', batchId: 'B1', ownerHandle: 'maxlevitsky', name: 'Clutch Up',
+      category: 'Gaming',
+      hashtags: ['esports', 'coach', 'real-time', 'b2c'],
+      pitch: 'Real-time decision coach for competitive players.',
+      description: `Clutch Up watches your game in real time (with consent), and overlays a discreet HUD with concrete micro-decisions: when to rotate, when to play passive, what to ping. Post-match it generates a 90-second video review of your 3 biggest decision errors.
+
+Initial titles: Valorant, CS2, Dota 2. Pro mode unlocks coach-grade analytics dashboards.`,
+      landingUrl: 'https://github.com/MaxLevitsky/clutch_up', repo: 'MaxLevitsky/clutch_up',
+      published: true, createdAt: Date.now() - day * 5,
+      techExecution: 70, marketPotential: 60, pitchScore: 64, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-arb', batchId: 'B1', ownerHandle: 'mitya139', name: 'Arbitrage Bot',
+      category: 'Finance',
+      hashtags: ['crypto', 'arbitrage', 'telegram', 'b2c', 'defi'],
+      pitch: 'Telegram bot that surfaces DEX arbitrage in real time.',
+      description: `Arbitrage Bot scans top DEX pools across L2s, simulates the round-trip with gas, and only pings the user when the after-cost spread clears a configurable threshold.
+
+Pro tier auto-executes via the user's wallet with deterministic limit-loss rules. Public free tier shows monitored pairs but not the live spread.`,
+      landingUrl: 'https://github.com/Mitya139/ai_lab_prediction_arbitrage_tg_bot', repo: 'Mitya139/ai_lab_prediction_arbitrage_tg_bot',
+      published: true, createdAt: Date.now() - day * 6,
+      techExecution: 64, marketPotential: 62, pitchScore: 58, currentMode: 'MODE-2',
+    },
+    {
+      id: 'S-creators', batchId: 'B1', ownerHandle: 'petrenkosofya', name: 'Creators Platform',
+      category: 'Marketing',
+      hashtags: ['creator-economy', 'b2b', 'content', 'monetization'],
+      pitch: 'All-in-one platform for content creators to monetise their audience.',
+      description: `Creators Platform stitches a creator's funnel together: link-in-bio, gated content, paid subscriptions, sponsorship marketplace, and analytics — all in one workspace.
+
+Brand-deal matching surfaces sponsors that look like a creator's audience persona (rather than chasing largest follower count). Pay-out goes through the user's existing Stripe or self-custodial wallet.`,
+      landingUrl: 'https://github.com/petrenkosofya/creators-platform', repo: 'petrenkosofya/creators-platform',
+      published: true, createdAt: Date.now() - day * 4,
+      techExecution: 66, marketPotential: 74, pitchScore: 64, currentMode: 'MODE-3',
+    },
+    {
+      id: 'S-ztbrowser', batchId: 'B1', ownerHandle: 'rusyaew', name: 'ZT Browser',
+      category: 'Security',
+      hashtags: ['privacy', 'zero-trust', 'browser', 'b2c', 'b2b'],
+      pitch: 'Privacy-first browser with zero-trust networking baked in.',
+      description: `ZT Browser ships with a built-in policy engine that splits traffic by domain into trust zones; each zone routes through a different egress and storage profile (cookies, localStorage, fingerprint).
+
+Pro tier targets enterprise: a central policy server pushes the trust profile, and per-tab compliance is reported to a SIEM.`,
+      landingUrl: 'https://github.com/rusyaew/ztinfra-ztbrowser-private-features-development', repo: 'rusyaew/ztinfra-ztbrowser-private-features-development',
+      published: true, createdAt: Date.now() - day * 8,
+      techExecution: 76, marketPotential: 60, pitchScore: 62, currentMode: 'MODE-4',
+    },
+    {
+      id: 'S-tglearn', batchId: 'B1', ownerHandle: 'somethingnew179', name: 'TG Learn',
+      category: 'Education',
+      hashtags: ['education', 'language-learning', 'telegram', 'b2c'],
+      pitch: 'Telegram-native flashcards that adapt to your study pattern.',
+      description: `TG Learn lives inside the chat: every morning it sends 5 cards optimised by your error history; you reply with the answer, the bot scores it, and resurfaces the hard cards the next day.
+
+Initial decks: Spanish, French, German, English idioms. Pro plan lets you import Anki decks and study with audio cards.`,
+      landingUrl: 'https://github.com/somethingnew179/yet-another-tg-learning-app', repo: 'somethingnew179/yet-another-tg-learning-app',
+      published: true, createdAt: Date.now() - day * 5,
+      techExecution: 60, marketPotential: 56, pitchScore: 54, currentMode: 'MODE-2',
+    },
+    {
+      id: 'S-p2pedit', batchId: 'B1', ownerHandle: 'weethet', name: 'P2PEdit',
+      category: 'Coding',
+      hashtags: ['p2p', 'devtools', 'collaboration', 'b2b', 'self-hosted'],
+      pitch: 'Real-time peer-to-peer collaborative editor — zero backend required.',
+      description: `P2PEdit lets two or more developers edit the same file with CRDT-style conflict-free updates, transported directly over WebRTC. No server, no signup, no leaks of source to a SaaS.
+
+Built for security-paranoid teams (gov, defence, fintech) where any backend is a vetting hurdle. Optional self-hosted relay for NAT-traversal in corp networks.`,
+      landingUrl: 'https://github.com/WeetHet/P2PEdit', repo: 'WeetHet/P2PEdit',
+      published: true, createdAt: Date.now() - day * 7,
+      techExecution: 74, marketPotential: 56, pitchScore: 60, currentMode: 'MODE-3',
     },
   ];
 
   const specs: ProductSpec[] = startups.map((s) => buildSpec(s.id, s.pitch, s.category, s.ownerHandle));
 
-  const hour = 3600000;
-  const investments: Investment[] = [
-    { id: 'I1', batchId: 'B1', investorHandle: 'bob',    startupId: 'S-aurora', amount: 250, createdAt: Date.now() - hour * 7 },
-    { id: 'I2', batchId: 'B1', investorHandle: 'carol',  startupId: 'S-aurora', amount: 150, createdAt: Date.now() - hour * 6 },
-    { id: 'I3', batchId: 'B1', investorHandle: 'alice',  startupId: 'S-pulse',  amount: 300, createdAt: Date.now() - hour * 5 },
-    { id: 'I4', batchId: 'B1', investorHandle: 'dmitry', startupId: 'S-nebula', amount: 100, createdAt: Date.now() - hour * 4 },
-    { id: 'I5', batchId: 'B1', investorHandle: 'bob',    startupId: 'S-pulse',  amount: 120, createdAt: Date.now() - hour * 3 },
-    { id: 'I6', batchId: 'B1', investorHandle: 'eva',    startupId: 'S-brisk',  amount: 200, createdAt: Date.now() - hour * 5 },
-    { id: 'I7', batchId: 'B1', investorHandle: 'henry',  startupId: 'S-lumen',  amount: 180, createdAt: Date.now() - hour * 4 },
-    { id: 'I8', batchId: 'B1', investorHandle: 'grace',  startupId: 'S-ember',  amount: 220, createdAt: Date.now() - hour * 2 },
-    { id: 'I9', batchId: 'B1', investorHandle: 'frank',  startupId: 'S-vector', amount: 140, createdAt: Date.now() - hour * 1 },
-    { id: 'I10', batchId: 'B1', investorHandle: 'ivy',   startupId: 'S-echo',   amount: 160, createdAt: Date.now() - hour * 8 },
-    { id: 'I11', batchId: 'B1', investorHandle: 'jack',  startupId: 'S-quill',  amount: 90, createdAt: Date.now() - hour * 6 },
-  ];
+  const investments: Investment[] = []; // Each cohort participant starts with a clean wallet.
 
   // Pre-bake one simulation per published startup so the dashboard isn't empty.
   const simulations: SimulationRun[] = [];

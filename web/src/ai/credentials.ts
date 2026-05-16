@@ -21,6 +21,6 @@ export const BAKED_OPENAI_KEY =
   (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim() ?? '';
 
 export const BAKED_OPENAI_MODEL =
-  (import.meta.env.VITE_OPENAI_MODEL as string | undefined)?.trim() || 'gpt-4o-mini';
+  (import.meta.env.VITE_OPENAI_MODEL as string | undefined)?.trim() || 'gpt-4o';
 
 export const HAS_BAKED_KEY = BAKED_OPENAI_KEY.length > 0;
