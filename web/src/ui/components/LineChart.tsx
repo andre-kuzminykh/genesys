@@ -125,19 +125,25 @@ export function ChartLegend({
   focusId?: string | null;
   onFocus?: (id: string | null) => void;
 }) {
+  // Single-row hashtag-style strip that scrolls horizontally when the legend
+  // would otherwise wrap. The scrollbar is hidden so the strip blends into
+  // the chart card.
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="mt-4 -mx-2 flex items-center gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {series.map((s) => {
         const dim = focusId && focusId !== s.id;
+        const focused = focusId === s.id;
         return (
           <button
             key={s.id}
             onMouseEnter={() => onFocus?.(s.id)}
             onMouseLeave={() => onFocus?.(null)}
-            className={`inline-flex items-center gap-1.5 rounded-full border border-surfaceLight px-2.5 py-1 text-xs transition ${dim ? 'opacity-40' : ''}`}
+            onClick={() => onFocus?.(focused ? null : s.id)}
+            style={focused ? { borderColor: s.color, color: s.color } : undefined}
+            className={`shrink-0 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-xs font-mono transition ${dim ? 'opacity-40' : ''} hover:border-neon-500/50`}
           >
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-            <span className="font-mono">{s.label}</span>
+            <span>{s.label}</span>
           </button>
         );
       })}

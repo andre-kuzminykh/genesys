@@ -197,7 +197,7 @@ export function Leaderboard() {
           <Wordmark size="xl" />
         </Link>
         <div className="flex items-center gap-3">
-          <Link to="/" className="ghost-button"><SparkleIcon /> Browse cohort</Link>
+          <Link to="/" className="ghost-button"><span aria-hidden>←</span> Back</Link>
           <Link to="/login" className="ghost-button"><GithubIcon /> Login</Link>
         </div>
       </header>
@@ -255,17 +255,14 @@ export function Leaderboard() {
           <>
             {/* Charts FIRST — these animate as the months reveal */}
             <Bento className="mt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ChartIcon size={28} className="text-softblue" />
-                  <div className="font-display text-2xl font-extrabold">Users · monthly</div>
-                  {revealing ? (
-                    <span className="ml-2 chip chip-yellow-solid">
-                      {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
-                    </span>
-                  ) : null}
-                </div>
-                <ChartLegend series={seriesUsers} focusId={focus} onFocus={setFocus} />
+              <div className="flex items-center gap-3">
+                <ChartIcon size={28} className="text-softblue" />
+                <div className="font-display text-2xl font-extrabold">Users · monthly</div>
+                {revealing ? (
+                  <span className="ml-2 chip chip-yellow-solid">
+                    {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
+                  </span>
+                ) : null}
               </div>
               <div className="mt-3">
                 <LineChart
@@ -278,20 +275,18 @@ export function Leaderboard() {
                   revealUpTo={revealIndex}
                 />
               </div>
+              <ChartLegend series={seriesUsers} focusId={focus} onFocus={setFocus} />
             </Bento>
 
             <Bento className="mt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ChartIcon size={28} className="text-neon-500" />
-                  <div className="font-display text-2xl font-extrabold">Revenue · monthly (USD)</div>
-                  {revealing ? (
-                    <span className="ml-2 chip chip-yellow-solid">
-                      {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
-                    </span>
-                  ) : null}
-                </div>
-                <ChartLegend series={seriesRevenue} focusId={focus} onFocus={setFocus} />
+              <div className="flex items-center gap-3">
+                <ChartIcon size={28} className="text-neon-500" />
+                <div className="font-display text-2xl font-extrabold">Revenue · monthly (USD)</div>
+                {revealing ? (
+                  <span className="ml-2 chip chip-yellow-solid">
+                    {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
+                  </span>
+                ) : null}
               </div>
               <div className="mt-3">
                 <LineChart
@@ -304,6 +299,7 @@ export function Leaderboard() {
                   revealUpTo={revealIndex}
                 />
               </div>
+              <ChartLegend series={seriesRevenue} focusId={focus} onFocus={setFocus} />
             </Bento>
 
             {/* Winners — best startup + best investor — only after the full reveal */}
