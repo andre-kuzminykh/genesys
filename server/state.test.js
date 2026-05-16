@@ -125,6 +125,36 @@ describe('TEST-GEN-221 — /api/upvote', () => {
   });
 });
 
+describe('TEST-GEN-501-S — FR-GEN-501 one-handle = one-vote invariant', () => {
+  it('toggling the same startup four times alternates voted true/false and never duplicates the handle', async () => {
+    const auth = { Authorization: 'Bearer token-mashan555' };
+    const body = JSON.stringify({ startupId: 'S-bte' });
+    let r;
+    r = await jsonReq('/api/upvote', { method: 'POST', headers: auth, body }); assert.equal(r.json.voted, true);  assert.equal(r.json.count, 1);
+    r = await jsonReq('/api/upvote', { method: 'POST', headers: auth, body }); assert.equal(r.json.voted, false); assert.equal(r.json.count, 0);
+    r = await jsonReq('/api/upvote', { method: 'POST', headers: auth, body }); assert.equal(r.json.voted, true);  assert.equal(r.json.count, 1);
+    r = await jsonReq('/api/upvote', { method: 'POST', headers: auth, body }); assert.equal(r.json.voted, false); assert.equal(r.json.count, 0);
+
+    const s = await jsonReq('/api/state');
+    const list = s.json.upvotes['S-bte'] ?? [];
+    // Handle must never appear twice and must end where we started — gone.
+    assert.equal(list.filter((h) => h.toLowerCase() === 'mashan555').length, 0);
+    assert.equal(list.length, 0);
+  });
+});
+
+describe('TEST-GEN-502-S — FR-GEN-502 bad GitHub token surfaces as 401 BAD_TOKEN', () => {
+  it('returns 401 BAD_TOKEN when GitHub does not recognise the bearer', async () => {
+    const r = await jsonReq('/api/upvote', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer this-is-not-a-token' },
+      body: JSON.stringify({ startupId: 'S-artrise' }),
+    });
+    assert.equal(r.status, 401);
+    assert.equal(r.json.error, 'BAD_TOKEN');
+  });
+});
+
 describe('TEST-GEN-222 — /api/invest', () => {
   it('refuses self-investment when the caller owns the startup', async () => {
     const r = await jsonReq('/api/invest', {

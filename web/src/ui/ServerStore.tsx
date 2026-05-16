@@ -70,20 +70,35 @@ export function ServerStoreProvider({ children }: { children: ReactNode }) {
     if (!myToken || !myHandle) {
       return { ok: false, code: 'NO_TOKEN', message: 'Sign in with GitHub to vote.' };
     }
+    // Snapshot the current list for this startup so we can revert if the
+    // server rejects the call.
+    const beforeList = state.upvotes[startupId] ?? [];
+    const handleLower = myHandle.toLowerCase();
+    const hadMyVote = beforeList.some((h) => h.toLowerCase() === handleLower);
+    // 1) Flip the local state IMMEDIATELY so the click feels instant.
+    setState((prev) => {
+      const list = prev.upvotes[startupId] ?? [];
+      const filtered = list.filter((h) => h.toLowerCase() !== handleLower);
+      const next = hadMyVote ? filtered : [...filtered, myHandle];
+      return { ...prev, upvotes: { ...prev.upvotes, [startupId]: next } };
+    });
     try {
+      // 2) Confirm with the server; reconcile in case of concurrent activity.
       const r = await postUpvote(myToken, startupId);
-      // Optimistic local update so the UI reflects the change immediately.
       setState((prev) => {
         const list = prev.upvotes[startupId] ?? [];
-        const without = list.filter((h) => h.toLowerCase() !== myHandle.toLowerCase());
-        const nextList = r.voted ? [...without, r.login] : without;
-        return { ...prev, upvotes: { ...prev.upvotes, [startupId]: nextList } };
+        const filtered = list.filter((h) => h.toLowerCase() !== handleLower);
+        const next = r.voted ? [...filtered, r.login] : filtered;
+        return { ...prev, upvotes: { ...prev.upvotes, [startupId]: next } };
       });
       return { ok: true, voted: r.voted, count: r.count };
     } catch (e: any) {
+      // 3) Roll the optimistic flip back so the UI doesn't lie.
+      setState((prev) => ({ ...prev, upvotes: { ...prev.upvotes, [startupId]: beforeList } }));
+      console.error('[upvote] failed', e);
       return { ok: false, code: (e?.code as ApiErrorCode) ?? 'NETWORK', message: String(e?.message ?? e) };
     }
-  }, [myToken, myHandle]);
+  }, [myToken, myHandle, state]);
 
   const invest = useCallback(async (startupId: string, amount: number): Promise<InvestOutcome> => {
     if (!myToken || !myHandle) {

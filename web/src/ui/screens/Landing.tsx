@@ -814,10 +814,21 @@ export function Landing() {
   const upvoteOf = useCallback((id: string) => server.upvoteCount(id), [server]);
   const hasVoted = useCallback((id: string) => server.hasVoted(id), [server]);
 
-  const upvote = useCallback((id: string) => {
+  const [upvoteErr, setUpvoteErr] = useState<string | null>(null);
+  const upvote = useCallback(async (id: string) => {
     setPopping(id);
-    void server.toggleUpvote(id);
     setTimeout(() => setPopping((p) => (p === id ? null : p)), 400);
+    const r = await server.toggleUpvote(id);
+    if (!r.ok) {
+      const msg: Record<string, string> = {
+        NO_TOKEN: 'Sign in with GitHub to upvote.',
+        BAD_TOKEN: 'Your GitHub session expired — sign in again.',
+        NOT_IN_ALLOWLIST: 'Your GitHub handle is not on the cohort allowlist.',
+        NETWORK: 'Couldn\'t reach the server. Try again in a moment.',
+      };
+      setUpvoteErr(msg[r.code] ?? r.message);
+      setTimeout(() => setUpvoteErr(null), 4000);
+    }
   }, [server]);
 
   const featured = useMemo(() => {
@@ -976,6 +987,15 @@ export function Landing() {
           </div>
         ) : null}
       </main>
+
+      {upvoteErr ? (
+        <div
+          role="status"
+          className="fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-2.5 text-sm text-danger shadow-2xl backdrop-blur-md"
+        >
+          {upvoteErr}
+        </div>
+      ) : null}
 
       <ScrollToTop />
       <Footer />

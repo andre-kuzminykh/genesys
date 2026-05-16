@@ -1128,6 +1128,254 @@ a backend so the key never lands in the client bundle.
 
 ---
 
+## 18. FEAT-GEN-050 — Upvote a cohort startup (re-spec, 2026-05-16)
+
+This re-spec is the canonical contract for the cohort-upvote feature. It
+supersedes the brief notes scattered in earlier sections.
+
+### 18.1 Feature
+
+- **Feature ID**: FEAT-GEN-050
+- **Name**: Cohort upvote
+- **One-liner**: A cohort member can express a single, reversible "yes I'd
+  back this" signal for any startup in the active batch. The signal is
+  visible to every visitor and persists across browser sessions.
+
+### 18.2 User stories
+
+- **US-GEN-050-A** — As a cohort founder I want to upvote my peers' startups
+  so the community ranking reflects who else I would put money on.
+- **US-GEN-050-B** — As a cohort investor I want to take my upvote back if I
+  change my mind, so the leaderboard reflects my current conviction.
+- **US-GEN-050-C** — As an anonymous visitor I want to see live upvote totals
+  so I can read the cohort's collective taste without signing in.
+- **US-GEN-050-D** — As a non-cohort GitHub user I want the system to refuse
+  my upvote politely so the cohort signal stays untainted.
+
+### 18.3 User flow (UX path)
+
+1. Visitor lands on `/` (Landing). Upvote counters are visible per startup
+   from the very first paint (fetched from `GET /api/state`).
+2. If logged in: arrow icon is in `text-textsec`, count is the raw server
+   number.
+3. Click the upvote button on a list card (or in the open DetailDialog).
+4. UI flips locally INSTANTLY: arrow rotates 180°, turns `neon-500`, count
+   increments by 1 (optimistic).
+5. Browser posts `POST /api/upvote` with `Authorization: Bearer <gh-token>`.
+6. Server verifies token via `GET https://api.github.com/user`, checks the
+   login against the cohort allowlist, then toggles the handle in
+   `state.upvotes[startupId]` and persists `/data/state.json`.
+7. Server responds `{ ok: true, voted, count, login }`.
+8. UI reconciles with server response (handles concurrent edits).
+9. If server returns a non-2xx, UI rolls the optimistic flip back AND shows
+   a non-blocking toast for ≤ 4 seconds (`NO_TOKEN` / `BAD_TOKEN` /
+   `NOT_IN_ALLOWLIST` / `NETWORK`).
+
+### 18.4 Use cases — Gherkin BDD
+
+#### UC-GEN-050-1 — Cast a vote
+
+```gherkin
+Feature: Cohort upvote
+  Scenario: An allowlisted user upvotes a startup they have not voted on yet
+    Given I am signed in as an allowlisted GitHub user "@mashan555"
+      And the startup "S-artrise" currently has 4 upvotes
+      And "@mashan555" is not among the voters of "S-artrise"
+    When I click the upvote button on the "S-artrise" list card
+    Then the button immediately renders as voted (neon, arrow flipped, count = 5)
+      And POST /api/upvote is called with my bearer token and { startupId: "S-artrise" }
+      And the server responds 200 with { ok: true, voted: true, count: 5, login: "mashan555" }
+      And state.upvotes["S-artrise"] now contains "mashan555"
+      And the file /data/state.json reflects the new state
+```
+
+#### UC-GEN-050-2 — Toggle off (undo a vote)
+
+```gherkin
+  Scenario: An allowlisted user clicks the button they already voted with
+    Given I am signed in as "@mashan555"
+      And "S-artrise" has 5 upvotes including mine
+    When I click the upvote button on "S-artrise"
+    Then the button renders as not voted (textsec, arrow up, count = 4)
+      And POST /api/upvote returns { ok: true, voted: false, count: 4 }
+      And state.upvotes["S-artrise"] no longer contains "mashan555"
+```
+
+#### UC-GEN-050-3 — Reject a non-allowlisted GitHub user
+
+```gherkin
+  Scenario: A signed-in user not on the allowlist tries to upvote
+    Given I am signed in as a GitHub user "@randompasserby" who is NOT in the cohort allowlist
+    When I click the upvote button on any startup
+    Then POST /api/upvote responds 403 with { error: "NOT_IN_ALLOWLIST", login: "randompasserby" }
+      And the UI rolls back its optimistic flip
+      And a toast appears for ≤ 4 s saying "Your GitHub handle is not on the cohort allowlist."
+```
+
+#### UC-GEN-050-4 — Anonymous read
+
+```gherkin
+  Scenario: An anonymous visitor browses the cohort
+    Given I am NOT signed in
+    When I open "/" (Landing)
+    Then GET /api/state returns the full upvotes map with no auth
+      And every list card and the detail dialog show the correct cohort total
+    When I click the upvote button
+    Then POST /api/upvote responds 401 with { error: "NO_TOKEN" }
+      And the UI shows a toast "Sign in with GitHub to upvote."
+```
+
+#### UC-GEN-050-5 — Cross-browser propagation (eventual consistency)
+
+```gherkin
+  Scenario: Two cohort members vote on the same startup concurrently
+    Given "@artem-grigorash" has S-bte open in browser A
+      And "@mashan555" has S-bte open in browser B
+      And neither has voted yet
+    When both click upvote within the 15-second poll window
+    Then both browsers refresh /api/state within 15 s
+      And state.upvotes["S-bte"] contains BOTH handles
+      And both browsers display count = 2 with the local user shown as voted
+```
+
+### 18.5 Functional requirements
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-501 | A single GitHub handle MUST contribute at most 1 upvote per startup at any time. Re-clicking toggles. | TEST-GEN-501-S |
+| FR-GEN-502 | `POST /api/upvote` MUST verify the bearer token against `https://api.github.com/user`. A 401 from GitHub MUST surface as 401 `BAD_TOKEN` to the client. | TEST-GEN-502-S |
+| FR-GEN-503 | The server MUST refuse upvotes from handles not in the cohort allowlist with 403 `NOT_IN_ALLOWLIST`. | TEST-GEN-503-S |
+| FR-GEN-504 | `GET /api/state` MUST be unauthenticated and return the current `upvotes` map + `investments` array verbatim. | TEST-GEN-504-S |
+| FR-GEN-505 | The browser MUST flip its UI state optimistically on click and roll back if the server returns non-2xx. | TEST-GEN-505-C |
+| FR-GEN-506 | Upvote totals MUST persist across server restarts (file backing under a docker-compose volume). | TEST-GEN-506-I |
+| FR-GEN-507 | The browser polls `/api/state` every 15 s while the page is open, so cohort activity from other members propagates without manual reload. | TEST-GEN-507-C |
+| FR-GEN-508 | Featured carousel + main list MUST sort by `upvoteOf(id)` descending so popular startups bubble up. | TEST-GEN-508-C |
+
+### 18.6 Non-functional requirements
+
+| NFR ID | Category | Requirement | Test |
+|---|---|---|---|
+| NFR-GEN-501 | Performance | `POST /api/upvote` end-to-end (browser click → server ack) MUST land in < 1.5 s p95 under normal cohort load. | TEST-GEN-510-I |
+| NFR-GEN-502 | Reliability | Concurrent upvotes serialize through a per-process write queue (`writeChain` in `server/index.js`); the on-disk file is updated atomically (`writeFile tmp` + `rename`). | TEST-GEN-511-S |
+| NFR-GEN-503 | Security | The GitHub OAuth access token MUST be sent only on Authorization headers to api.github.com and same-origin /api/*. Never logged in plaintext. | TEST-GEN-512-I (code review) |
+| NFR-GEN-504 | Observability | Every accepted upvote leaves an `[genesys-api]` log line server-side: start, response code, duration. | TEST-GEN-513-I |
+| NFR-GEN-505 | Accessibility | The upvote button has an `aria-label`/`aria-pressed` reflecting current state. Keyboard activation (Space/Enter) is equivalent to mouse click. | TEST-GEN-514-C |
+| NFR-GEN-506 | Resilience | If the server's state file is missing or corrupt on boot, the server MUST start with an empty state and log a warning — never crash. | TEST-GEN-515-I |
+
+### 18.7 Tests by layer
+
+| Test ID | Layer | What it covers | File |
+|---|---|---|---|
+| TEST-GEN-221 (existing) | Service (backend) | `/api/upvote` accept / toggle / reject / count | `server/state.test.js` |
+| TEST-GEN-220 (existing) | Service (backend) | `/api/state` returns the empty store on boot | `server/state.test.js` |
+| TEST-GEN-501-S | Service | One-handle = one-vote invariant under repeated toggles | `server/state.test.js` |
+| TEST-GEN-502-S | Service | Bad GitHub token → 401 BAD_TOKEN | `server/state.test.js` |
+| TEST-GEN-503-S | Service | Non-allowlisted user → 403 NOT_IN_ALLOWLIST | `server/state.test.js` |
+| TEST-GEN-504-S | Service | `/api/state` returns persisted map without auth | `server/state.test.js` |
+| TEST-GEN-505-C | Client | Optimistic flip + rollback on server error | UI flow (manual + integration) |
+| TEST-GEN-506-I | Infra | `state.json` survives `docker compose up -d --build` | manual smoke + `auth_health` check |
+| TEST-GEN-507-C | Client | 15-s poll picks up other cohort members' votes | integration |
+| TEST-GEN-508-C | Client | Featured carousel order reflects current upvote counts | integration |
+| TEST-GEN-510-I | Infra | p95 latency of /api/upvote | manual measurement |
+| TEST-GEN-511-S | Service | Concurrent upvote serialization writes a consistent file | `server/state.test.js` |
+| TEST-GEN-512-I | Infra | Token never appears in `docker logs` | manual grep |
+| TEST-GEN-513-I | Infra | `[genesys-api] responses` log line per upvote | manual `docker logs` |
+| TEST-GEN-514-C | Client | aria-pressed flips with the click | manual a11y check |
+| TEST-GEN-515-I | Infra | Server boots with empty state on missing file | manual smoke |
+| (existing) AI evals | AI | This feature has NO AI dependency — n/a | — |
+
+### 18.8 Component map (what file does what)
+
+| Layer | File | Role |
+|---|---|---|
+| Client | `web/src/ui/screens/Landing.tsx` | Renders upvote buttons on ListCard + DetailDialog, calls `useServer().toggleUpvote(id)`, surfaces error toast. |
+| Client | `web/src/ui/ServerStore.tsx` | Holds shared `ServerState`, runs the 15 s `/api/state` poll, exposes `toggleUpvote` with optimistic flip + rollback. |
+| Client | `web/src/domain/api.ts` | Pure fetch wrappers `fetchState()` and `postUpvote(token, startupId)`. |
+| Client | `web/src/ui/AppStore.tsx` | Owns session (handle + access token). |
+| Service | `server/index.js` | `/api/state`, `/api/upvote`, `/api/invest`, `/api/llm/responses`. Single Node process. |
+| Service | `server/state.test.js` | Node `--test` integration suite against a temp state file with a stubbed `globalThis.fetch` for GitHub. |
+| Data | `/data/state.json` | The whole shared-state document (`upvotes` + `investments`). Mounted from `./data` on the host via `docker-compose.yml`. |
+| Infra | `docker-compose.yml` | Wires the web + auth containers; mounts `./data:/data`; passes OPENAI + GITHUB env. |
+| Infra | `web/nginx.conf` | Proxies `/api/*` to `genesys_auth:3000` with `proxy_read_timeout 240s`. |
+
+### 18.9 Infra as code — what's deployed where
+
+```
+human-1 VM (europe-west1-b)
+└── docker compose -f /opt/genesis/docker-compose.yml
+    ├── service: web      (image genesys-startup-studio)
+    │   └── nginx → static React bundle + /api proxy
+    ├── service: auth     (image genesys-auth, Node 22)
+    │   ├── env: OPENAI_API_KEY, GITHUB_CLIENT_ID/SECRET, PUBLIC_URL
+    │   └── mount: ./data → /data        ← state.json lives here
+    └── port-publish: GENESIS_PORT:80    (default 8026)
+```
+
+### 18.10 Data — ERD / DFD slice for this feature
+
+ERD (slice):
+
+```
+┌─────────────────┐ 1   N ┌──────────────────────────┐
+│ GitHubHandle    │───────│ Upvote                   │
+│ (lowercase str) │       │  startupId    : string   │
+└─────────────────┘       │  voterHandle  : string   │  N   1 ┌─────────────┐
+                          │  ts (implicit): ms       │────────│ Startup     │
+                          └──────────────────────────┘        │ id (S-...)  │
+                                                              └─────────────┘
+                          (stored as upvotes: Record<startupId, string[]>)
+```
+
+DFD for one upvote click:
+
+```
+[Browser]
+  click ── toggleUpvote(id)
+   │
+   ├──> setState optimistic flip
+   │
+   └──> POST /api/upvote  (Bearer token, { startupId })
+         │
+         ▼
+       [nginx /api/*]  → proxy_pass → [auth:3000]
+                                          │
+                                          ├─ whoami(token) → GET api.github.com/user
+                                          │   ↳ 401 ?   → respond 401 BAD_TOKEN
+                                          │
+                                          ├─ allowlist.has(login) ? else 403
+                                          │
+                                          ├─ state.upvotes[id] = toggle(state.upvotes[id], login)
+                                          │
+                                          ├─ writeChain: writeFile state.json.tmp → rename → state.json
+                                          │
+                                          └─ respond 200 { ok, voted, count, login }
+   │
+   └──< receive response → reconcile setState
+```
+
+### 18.11 Services + AI services
+
+- **Service**: `/api/upvote` (Express handler in `server/index.js`). No AI
+  dependency. Reads from / writes to in-process `state` object + `state.json`.
+- **AI service**: none. (For comparison: `narrativeSeries` / `reviewForUser` /
+  `reviewForMarket` etc. DO have prompts in `web/src/ai/openai.ts` and feed
+  the Leaderboard, but the upvote path is pure CRUD.)
+- **Prompts directory**: `web/src/ai/prompts/` — currently inline in
+  `openai.ts`; when prompts are extracted to `.md` files, the upvote feature
+  remains unaffected because it has no AI dependency.
+
+### 18.12 Traceability matrix
+
+| Feature | User Story | Use Case | FR | NFR | Test | Code |
+|---|---|---|---|---|---|---|
+| FEAT-GEN-050 | US-GEN-050-A | UC-GEN-050-1 | FR-GEN-501, FR-GEN-502, FR-GEN-505 | NFR-GEN-501, NFR-GEN-505 | TEST-GEN-221, TEST-GEN-501-S, TEST-GEN-505-C, TEST-GEN-514-C | `Landing.tsx`, `ServerStore.tsx`, `api.ts`, `server/index.js` |
+| FEAT-GEN-050 | US-GEN-050-B | UC-GEN-050-2 | FR-GEN-501, FR-GEN-505 | NFR-GEN-505 | TEST-GEN-221, TEST-GEN-501-S, TEST-GEN-505-C | same |
+| FEAT-GEN-050 | US-GEN-050-C | UC-GEN-050-4 | FR-GEN-504, FR-GEN-507 | NFR-GEN-501 | TEST-GEN-220, TEST-GEN-504-S, TEST-GEN-507-C | `Landing.tsx`, `ServerStore.tsx`, `api.ts`, `server/index.js` |
+| FEAT-GEN-050 | US-GEN-050-D | UC-GEN-050-3 | FR-GEN-503 | NFR-GEN-503 | TEST-GEN-503-S, TEST-GEN-512-I | `server/index.js` |
+| FEAT-GEN-050 | (cross) | UC-GEN-050-5 | FR-GEN-506, FR-GEN-507 | NFR-GEN-502, NFR-GEN-504, NFR-GEN-506 | TEST-GEN-506-I, TEST-GEN-507-C, TEST-GEN-511-S, TEST-GEN-513-I, TEST-GEN-515-I | `server/index.js`, `docker-compose.yml` |
+
+---
+
 ## 17. Shared backend state — upvotes & investments persisted on the server (added 2026-05-16)
 
 ### 17.1 Why
