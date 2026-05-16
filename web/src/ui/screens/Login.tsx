@@ -60,7 +60,7 @@ export function Login() {
       <div className="mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-10 px-6 py-10 md:grid-cols-2">
         <div>
           <Link to="/" aria-label="Genesys home" className="mb-7 inline-block">
-            <Wordmark size="md" />
+            <Wordmark size="lg" />
           </Link>
           <h1 className="mt-5 font-display text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
             One door in.

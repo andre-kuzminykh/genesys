@@ -84,7 +84,7 @@ export function PickRepo() {
     <div className="relative min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="md" />
+          <Wordmark size="lg" />
         </Link>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm">

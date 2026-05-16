@@ -306,11 +306,12 @@ function FeaturedCarousel({
 // ---------- list card ----------
 
 function ListCard({
-  startup, upvotes, popping, onOpen, onUpvote, onTagClick,
+  startup, upvotes, popping, invested, onOpen, onUpvote, onTagClick,
 }: {
   startup: Startup;
   upvotes: number;
   popping: boolean;
+  invested: number;
   onOpen: () => void;
   onUpvote: () => void;
   onTagClick: (t: string) => void;
@@ -342,9 +343,17 @@ function ListCard({
             <span className="font-display text-lg font-extrabold leading-none">{upvotes}</span>
           </button>
 
-          <button onClick={onOpen} className="ghost-button !py-2 !px-5 text-sm">
-            Open <ArrowRight16 />
-          </button>
+          <div className="flex items-center gap-3">
+            {invested > 0 ? (
+              <span className="inline-flex items-center gap-1.5 text-neon-500">
+                <DollarIcon size={14} />
+                <span className="font-display text-sm font-extrabold leading-none">{fmtUSD(invested)}</span>
+              </span>
+            ) : null}
+            <button onClick={onOpen} className="ghost-button !py-2 !px-5 text-sm">
+              Open <ArrowRight16 />
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -428,6 +437,23 @@ function DetailDialog({
   const [investOpen, setInvestOpen] = useState(false);
   const [amount, setAmount] = useState('1000');
   const [investErr, setInvestErr] = useState<string | null>(null);
+
+  // How much THIS user has already invested into THIS startup
+  const myInvested = me
+    ? state.investments
+        .filter((i) => i.investorHandle === me && i.startupId === startup.id)
+        .reduce((a, b) => a + b.amount, 0)
+    : 0;
+
+  // Pull the latest forecast for this startup, if any
+  const forecastForThis = useMemo(() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('genesys:forecast:v1') : null;
+      if (!raw) return null;
+      const sim = JSON.parse(raw) as { startups: Array<{ startupId: string; endUsers: number; totalRevenueUSD: number }> };
+      return sim.startups.find((s) => s.startupId === startup.id) ?? null;
+    } catch { return null; }
+  }, [startup.id, state.investments.length]);
 
   function submitInvest() {
     setInvestErr(null);
@@ -532,12 +558,17 @@ function DetailDialog({
 
         <div className="px-7 pt-6">
           <div className="display-mono pb-2">numbers</div>
-          <div className="grid grid-cols-4 gap-x-6 gap-y-3">
-            <FlatMetric label="Spec"      value={score.specCompleteness} tone="text-neon-500" />
-            <FlatMetric label="Trace"     value={score.traceCoverage}    tone="text-softblue" />
-            <FlatMetric label="Tests"     value={score.testPassRate}     tone="text-signal-green" />
-            <FlatMetric label="Readiness" value={score.readiness}        tone="text-neon-500" />
-          </div>
+          {forecastForThis ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <FlatMetric label="Users (May 27)"  value={forecastForThis.endUsers}                  tone="text-softblue"  />
+              <FlatMetric label="Revenue (year)"  value={Math.round(forecastForThis.totalRevenueUSD)} tone="text-neon-500"  prefix="$" />
+            </div>
+          ) : (
+            <p className="text-sm text-textsec">
+              No forecast yet — run the cohort simulation on the
+              <Link to="/leaderboard" className="ml-1 text-neon-500 underline">Leaderboard</Link>.
+            </p>
+          )}
         </div>
 
         {/* Invest block */}
@@ -574,6 +605,16 @@ function DetailDialog({
                     </button>
                   ) : null}
                 </div>
+
+                {myInvested > 0 ? (
+                  <div className="mt-4 flex items-center justify-between rounded-2xl border border-neon-500/30 bg-neon-500/[0.08] px-4 py-2.5">
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarIcon size={14} className="text-neon-500" />
+                      <span>You've invested in {startup.name}</span>
+                    </div>
+                    <span className="font-display text-lg font-extrabold text-neon-500">{fmtUSD(myInvested)}</span>
+                  </div>
+                ) : null}
 
                 {investOpen ? (
                   <form
@@ -647,11 +688,16 @@ function DetailDialog({
   );
 }
 
-function FlatMetric({ label, value, tone }: { label: string; value: number; tone: string }) {
+function FlatMetric({ label, value, tone, prefix = '' }: { label: string; value: number; tone: string; prefix?: string }) {
+  const n = Math.round(value);
+  const display =
+    n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + 'M' :
+    n >= 1_000 ? Math.round(n / 1000) + 'k' :
+    String(n);
   return (
     <div>
       <div className="display-mono">{label}</div>
-      <div className={`mt-0.5 font-display text-2xl font-extrabold ${tone}`}>{Math.round(value)}</div>
+      <div className={`mt-0.5 font-display text-2xl font-extrabold ${tone}`}>{prefix}{display}</div>
     </div>
   );
 }
@@ -735,12 +781,20 @@ export function Landing() {
 
   const myHandle = state.session?.handle;
   const myWallet = myHandle ? remainingCredits(state, state.activeBatchId, myHandle) : null;
+  const myInvestments: Record<string, number> = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!myHandle) return out;
+    for (const i of state.investments) {
+      if (i.investorHandle === myHandle) out[i.startupId] = (out[i.startupId] ?? 0) + i.amount;
+    }
+    return out;
+  }, [state.investments, myHandle]);
 
   return (
     <div className="min-h-screen">
       <header className="mx-auto grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="md" />
+          <Wordmark size="lg" />
         </Link>
 
         <div className="flex justify-center">
@@ -762,12 +816,24 @@ export function Landing() {
 
         <div className="flex items-center gap-3">
           {myHandle ? (
-            <div className="flex h-11 items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 font-display font-extrabold">
+            <Link
+              to="/leaderboard"
+              title="Open leaderboard"
+              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display font-extrabold transition hover:border-neon-500/40 hover:text-neon-500"
+            >
               <DollarIcon size={14} className="text-neon-500" />
               <span>{fmtUSD(myWallet ?? 0)}</span>
-            </div>
-          ) : null}
-          <Link to="/leaderboard" className="ghost-button shrink-0"><TrophyIcon /> Leaderboard</Link>
+            </Link>
+          ) : (
+            <Link
+              to="/leaderboard"
+              title="Open leaderboard"
+              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-surfaceLight bg-surface px-4 font-display font-bold transition hover:border-neon-500/40 hover:text-neon-500"
+            >
+              <TrophyIcon size={14} className="text-neon-500" />
+              <span>Leaderboard</span>
+            </Link>
+          )}
           <ThemeToggle />
           {myHandle ? (
             <Link to="/onboarding/repo" className="ghost-button shrink-0"><GithubIcon /> @{myHandle}</Link>
@@ -797,6 +863,7 @@ export function Landing() {
                 startup={startup}
                 upvotes={upvoteOf(startup.id)}
                 popping={popping === startup.id}
+                invested={myInvestments[startup.id] ?? 0}
                 onOpen={() => openById(startup.id)}
                 onUpvote={() => upvote(startup.id)}
                 onTagClick={(t) => setTags((cur) => toggleTag(cur, t))}

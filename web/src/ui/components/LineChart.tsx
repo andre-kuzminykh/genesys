@@ -14,6 +14,9 @@ type Props = {
   /** highlight a specific series (others fade) */
   focusId?: string | null;
   onFocus?: (id: string | null) => void;
+  /** Reveal only the first N points (e.g. for month-by-month animation).
+   *  If omitted, the whole series is drawn. */
+  revealUpTo?: number;
 };
 
 const PAD_L = 56;
@@ -31,7 +34,7 @@ function niceCeil(v: number): number {
   return 10 * order;
 }
 
-export function LineChart({ labels, series, height = 260, yLabel, formatY, focusId, onFocus }: Props) {
+export function LineChart({ labels, series, height = 260, yLabel, formatY, focusId, onFocus, revealUpTo }: Props) {
   const W = 760;
   const H = height;
   const innerW = W - PAD_L - PAD_R;
@@ -43,6 +46,7 @@ export function LineChart({ labels, series, height = 260, yLabel, formatY, focus
 
   const yTicks = 4;
   const tickValues = Array.from({ length: yTicks + 1 }, (_, i) => (max * i) / yTicks);
+  const cap = typeof revealUpTo === 'number' ? Math.max(0, Math.min(labels.length, revealUpTo)) : labels.length;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="block w-full h-auto" role="img" aria-label="line chart">
@@ -75,13 +79,15 @@ export function LineChart({ labels, series, height = 260, yLabel, formatY, focus
       {series.map((s) => {
         const isOn = !focusId || focusId === s.id;
         const op = isOn ? 1 : 0.18;
-        const path = s.points
+        const pts = s.points.slice(0, cap);
+        if (pts.length === 0) return null;
+        const path = pts
           .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xs[i]} ${yOf(v)}`)
           .join(' ');
         return (
           <g key={s.id} opacity={op}>
             <path d={path} stroke={s.color} strokeWidth={isOn ? 2.5 : 1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            {s.points.map((v, i) => (
+            {pts.map((v, i) => (
               <circle
                 key={i}
                 cx={xs[i]}
@@ -92,6 +98,17 @@ export function LineChart({ labels, series, height = 260, yLabel, formatY, focus
                 onMouseLeave={() => onFocus?.(null)}
               />
             ))}
+            {pts.length > 0 ? (
+              <circle
+                cx={xs[pts.length - 1]}
+                cy={yOf(pts[pts.length - 1]!)}
+                r={isOn ? 4 : 2.5}
+                fill={s.color}
+                opacity={0.9}
+              >
+                <animate attributeName="r" values={`${isOn ? 4 : 2.5};${isOn ? 6 : 4};${isOn ? 4 : 2.5}`} dur="1.4s" repeatCount="indefinite" />
+              </circle>
+            ) : null}
           </g>
         );
       })}

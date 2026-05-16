@@ -6,6 +6,13 @@ WORKDIR /app
 
 RUN corepack enable
 
+# Build-time env passed via docker compose (.env at project root) or --build-arg.
+# These get inlined into the bundle by Vite's import.meta.env.VITE_* substitution.
+ARG VITE_OPENAI_API_KEY
+ARG VITE_OPENAI_MODEL=gpt-4o-mini
+ENV VITE_OPENAI_API_KEY=${VITE_OPENAI_API_KEY}
+ENV VITE_OPENAI_MODEL=${VITE_OPENAI_MODEL}
+
 # install deps with a stable cache
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile

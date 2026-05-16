@@ -18,7 +18,7 @@ export function ComingSoon() {
     <div className="relative min-h-screen">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
         <Link to="/" aria-label="Genesys home">
-          <Wordmark size="md" />
+          <Wordmark size="lg" />
         </Link>
         <Link to="/onboarding/repo" className="ghost-button"><GithubIcon /> Pick another repo</Link>
       </header>

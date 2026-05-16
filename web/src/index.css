@@ -56,10 +56,16 @@
 }
 
 /* Restore font-size semantics for `text-base` (Tailwind's default 1rem).
-   Adding colors.base in tailwind.config promoted text-base to mean "text colour",
-   which broke inputs and other places that expect 1rem. */
+   Adding colors.base in tailwind.config promoted text-base to "color: var(--c-base)",
+   which broke every `text-base` usage that meant font-size 1rem (text became
+   the page bg colour, i.e. near-invisible). For intentional dark-text use the
+   stable `text-ink` token instead. */
 @layer utilities {
-  .text-base { font-size: 1rem; line-height: 1.5rem; }
+  .text-base {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+    color: inherit !important;
+  }
 }
 
 @layer components {

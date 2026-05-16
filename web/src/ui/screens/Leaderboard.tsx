@@ -13,8 +13,7 @@ import {
   type LlmPort,
 } from '@/domain/simulation';
 import { OpenAILlmAdapter } from '@/ai/openai';
-
-const KEY_STORAGE = 'genesys:openai-key:v1';
+import { BAKED_OPENAI_KEY, BAKED_OPENAI_MODEL, HAS_BAKED_KEY } from '@/ai/credentials';
 
 const STORAGE_KEY = 'genesys:forecast:v1';
 
@@ -57,16 +56,38 @@ export function Leaderboard() {
     [state.startups, state.activeBatchId],
   );
 
+  const bestInvestor = useMemo(() => {
+    if (state.investments.length === 0) return null;
+    const cached = (() => { try { const r = localStorage.getItem('genesys:forecast:v1'); return r ? JSON.parse(r) as SimulationResult : null; } catch { return null; }})();
+    const revenueByStartup: Record<string, number> = {};
+    if (cached) for (const f of cached.startups) revenueByStartup[f.startupId] = f.totalRevenueUSD;
+    const portfolio: Record<string, { invested: number; score: number }> = {};
+    for (const inv of state.investments) {
+      if (!portfolio[inv.investorHandle]) portfolio[inv.investorHandle] = { invested: 0, score: 0 };
+      portfolio[inv.investorHandle]!.invested += inv.amount;
+      // weight by projected revenue of the startup
+      portfolio[inv.investorHandle]!.score += inv.amount * ((revenueByStartup[inv.startupId] ?? 100_000) / 1_000_000);
+    }
+    const ranked = Object.entries(portfolio).map(([handle, p]) => ({ handle, ...p })).sort((a, b) => b.score - a.score);
+    if (ranked.length === 0) return null;
+    const top = ranked[0]!;
+    const user = state.users.find((u) => u.handle === top.handle);
+    return {
+      handle: top.handle,
+      name: user?.name ?? '@' + top.handle,
+      invested: top.invested,
+      score: top.score,
+      picks: state.investments.filter((i) => i.investorHandle === top.handle).length,
+    };
+  }, [state.investments, state.users]);
+
   const [forecast, setForecast] = useState<SimulationResult | null>(() => loadCached());
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState<string>('');
   const [focus, setFocus] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string>(() => {
-    try { return localStorage.getItem(KEY_STORAGE) ?? ''; } catch { return ''; }
-  });
-  const [showKey, setShowKey] = useState(false);
   const [adapterErr, setAdapterErr] = useState<string | null>(null);
-  const useReal = apiKey.trim().length > 0;
+  const [revealIndex, setRevealIndex] = useState<number>(() => loadCached()?.months.length ?? 0);
+  const revealing = forecast !== null && revealIndex < forecast.months.length;
 
   // pre-warm from a cached run
   useEffect(() => {
@@ -79,59 +100,38 @@ export function Leaderboard() {
   async function run() {
     setBusy(true);
     setAdapterErr(null);
-    const stages = useReal
-      ? [
-          'Calling OpenAI: reading each startup description…',
-          'Calling OpenAI: market deep-research per segment…',
-          'Calling OpenAI: simulating persona panels (impatient · technical · student · power_user · skeptical_investor)…',
-          'Calling OpenAI: forecasting May 2026 → May 2027 monthly users + revenue…',
-          'Aggregating reviews · choosing the cohort winner…',
-        ]
-      : [
-          'Reading each startup description (mock LLM)…',
-          'Probing hashtag-driven market trend index…',
-          'Running persona panels: impatient · technical · student · power_user · skeptical_investor…',
-          'Forecasting monthly users + revenue (May 2026 → May 2027)…',
-          'Aggregating reviews and crowning the winner…',
-        ];
+    setRevealIndex(0);
 
-    let llm: LlmPort = new MockLlmAdapter();
-    if (useReal) {
-      llm = new OpenAILlmAdapter({ apiKey: apiKey.trim() });
-    }
+    const llm: LlmPort = HAS_BAKED_KEY
+      ? new OpenAILlmAdapter({ apiKey: BAKED_OPENAI_KEY, model: BAKED_OPENAI_MODEL })
+      : new MockLlmAdapter();
 
+    setStage('Calling LLM: market deep research + persona reviews + 13-month forecast…');
+
+    let result: SimulationResult;
     try {
-      // Drive the stage messages while the LLM works in parallel.
-      const ticker = (async () => {
-        for (const s of stages) {
-          setStage(s);
-          await sleep(600);
-        }
-      })();
-      const [result] = await Promise.all([runSimulation(startups, llm), ticker]);
-
-      saveCached(result);
-      applyUpvoteBumps(result);
-      setForecast(result);
+      result = await runSimulation(startups, llm);
     } catch (e: any) {
-      // Fall back to the mock so the user always sees a result.
-      setAdapterErr(`OpenAI failed (${e?.message ?? e}). Using deterministic mock instead.`);
-      const mockResult = await runSimulation(startups, new MockLlmAdapter());
-      saveCached(mockResult);
-      applyUpvoteBumps(mockResult);
-      setForecast(mockResult);
-    } finally {
-      setBusy(false);
-      setStage('');
+      setAdapterErr(`LLM call failed (${e?.message ?? e}). Falling back to a deterministic forecast.`);
+      result = await runSimulation(startups, new MockLlmAdapter());
     }
-  }
 
-  function saveKey(k: string) {
-    setApiKey(k);
-    try {
-      if (k.trim()) localStorage.setItem(KEY_STORAGE, k.trim());
-      else localStorage.removeItem(KEY_STORAGE);
-    } catch { /* ignore */ }
+    saveCached(result);
+    setForecast(result);
+
+    // Month-by-month reveal — ~3 seconds per month so the user can watch
+    // the curves grow and read the running narrative.
+    for (let i = 1; i <= result.months.length; i++) {
+      setRevealIndex(i);
+      const cohortUsers = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.users, 0);
+      const cohortRev = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.revenueUSD, 0);
+      setStage(`Month ${i}/${result.months.length} · ${result.months[i - 1]} · ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()} revenue`);
+      await sleep(3000);
+    }
+
+    applyUpvoteBumps(result);
+    setBusy(false);
+    setStage('');
   }
 
   // map forecasts onto startups (preserve display order matching ranking)
@@ -173,67 +173,18 @@ export function Leaderboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        {/* Hero */}
+        {/* Hero — no big heading; the screen content speaks for itself */}
         <section className="mt-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <Chip tone="yellow"><TrophyIcon size={12} /> demo-day · live forecast</Chip>
-            <h1 className="mt-3 font-display text-4xl font-extrabold leading-tight tracking-tight">
-              Leaderboard
-            </h1>
-            <p className="mt-2 max-w-2xl text-textsec">
-              An LLM panel reads each startup's spec, probes the market through hashtag trend signals,
-              runs persona reviews, and forecasts monthly users and revenue from May 2026 to May 2027.
-            </p>
-          </div>
+          <p className="max-w-2xl text-textsec">
+            An LLM panel reads each startup's spec, probes the market through hashtag trend signals,
+            runs persona reviews, and forecasts monthly users and revenue from May 2026 to May 2027.
+          </p>
           <div className="text-right">
             <button onClick={run} disabled={busy} className="neon-button disabled:opacity-60">
               <SparkleIcon /> {busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
             </button>
-            <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-              <span className={`inline-flex h-2 w-2 rounded-full ${useReal ? 'bg-neon-500' : 'bg-textsec'}`} />
-              <span className="display-mono">{useReal ? 'using OpenAI · live LLM' : 'mock LLM · deterministic'}</span>
-            </div>
-            {forecast && !busy ? (
-              <div className="display-mono mt-1">last run · {new Date(forecast.runAt).toLocaleString()}</div>
-            ) : null}
           </div>
         </section>
-
-        {/* OpenAI key field — stored only in localStorage, never bundled */}
-        <Bento className="mt-6">
-          <details>
-            <summary className="cursor-pointer flex items-center gap-2">
-              <SparkleIcon className="text-neon-500" />
-              <span className="font-display font-bold">{useReal ? 'OpenAI key attached' : 'Bring your own OpenAI key (optional — turns mock into live LLM)'}</span>
-            </summary>
-            <div className="mt-3 space-y-2">
-              <div className="flex items-center gap-2 rounded-2xl border border-surfaceLight bg-base px-3 py-2.5 focus-within:border-neon-500/60">
-                <span className="text-textsec">sk-</span>
-                <input
-                  value={apiKey}
-                  onChange={(e) => saveKey(e.target.value)}
-                  type={showKey ? 'text' : 'password'}
-                  placeholder="paste sk-… or sk-proj-… here"
-                  className="flex-1 bg-transparent outline-none placeholder:text-textsec font-mono text-sm"
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-                <button onClick={() => setShowKey((v) => !v)} className="text-xs text-textsec hover:text-white">
-                  {showKey ? 'hide' : 'show'}
-                </button>
-                {apiKey ? (
-                  <button onClick={() => saveKey('')} className="text-xs text-textsec hover:text-danger">
-                    forget
-                  </button>
-                ) : null}
-              </div>
-              <p className="text-xs text-textsec">
-                Stored only in this browser's <code className="font-mono">localStorage</code> · never committed to the repo · never sent to Genesys servers.
-                Calls go directly to <code className="font-mono">api.openai.com</code> with this key.
-              </p>
-            </div>
-          </details>
-        </Bento>
 
         {adapterErr ? (
           <div className="mt-4 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{adapterErr}</div>
@@ -267,27 +218,17 @@ export function Leaderboard() {
 
         {forecast ? (
           <>
-            {/* Winner banner */}
-            <Bento className="mt-6 glow-yellow">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <Chip tone="yellow"><TrophyIcon size={12} /> winner</Chip>
-                  <h2 className="mt-2 font-display text-3xl font-extrabold leading-tight">{forecast.winner.startupName}</h2>
-                  <p className="mt-2 max-w-2xl text-sm text-textsec">{forecast.winner.reasoning}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-right">
-                  <Stat label="End users" value={ranked.find((r) => r.startupId === forecast.winner.startupId)?.endUsers.toLocaleString() ?? '—'} />
-                  <Stat label="Year revenue" value={fmtUSD(ranked.find((r) => r.startupId === forecast.winner.startupId)?.totalRevenueUSD ?? 0)} />
-                </div>
-              </div>
-            </Bento>
-
-            {/* Charts */}
+            {/* Charts FIRST — these animate as the months reveal */}
             <Bento className="mt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <ChartIcon className="text-softblue" />
                   <div className="font-display text-lg font-bold">Users · monthly</div>
+                  {revealing ? (
+                    <span className="ml-2 chip chip-yellow-solid">
+                      {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
+                    </span>
+                  ) : null}
                 </div>
                 <ChartLegend series={seriesUsers} focusId={focus} onFocus={setFocus} />
               </div>
@@ -299,6 +240,7 @@ export function Leaderboard() {
                   formatY={fmtUsers}
                   focusId={focus}
                   onFocus={setFocus}
+                  revealUpTo={revealIndex}
                 />
               </div>
             </Bento>
@@ -308,6 +250,11 @@ export function Leaderboard() {
                 <div className="flex items-center gap-2">
                   <ChartIcon className="text-neon-500" />
                   <div className="font-display text-lg font-bold">Revenue · monthly (USD)</div>
+                  {revealing ? (
+                    <span className="ml-2 chip chip-yellow-solid">
+                      {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
+                    </span>
+                  ) : null}
                 </div>
                 <ChartLegend series={seriesRevenue} focusId={focus} onFocus={setFocus} />
               </div>
@@ -319,11 +266,53 @@ export function Leaderboard() {
                   formatY={fmtUSD}
                   focusId={focus}
                   onFocus={setFocus}
+                  revealUpTo={revealIndex}
                 />
               </div>
             </Bento>
 
-            {/* Per-startup cards */}
+            {/* Winners — best startup + best investor — only after the full reveal */}
+            {!revealing ? (
+              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                <Bento className="glow-yellow">
+                  <Chip tone="yellow" icon={<TrophyIcon size={12} />}>best startup</Chip>
+                  <h2 className="mt-3 font-display text-2xl font-extrabold leading-tight">{forecast.winner.startupName}</h2>
+                  <p className="mt-2 text-sm text-textsec">{forecast.winner.reasoning}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Stat label="End users" value={ranked.find((r) => r.startupId === forecast.winner.startupId)?.endUsers.toLocaleString() ?? '—'} />
+                    <Stat label="Year revenue" value={fmtUSD(ranked.find((r) => r.startupId === forecast.winner.startupId)?.totalRevenueUSD ?? 0)} />
+                  </div>
+                </Bento>
+
+                {bestInvestor ? (
+                  <Bento className="glow-sky">
+                    <Chip tone="sky" icon={<TrophyIcon size={12} />}>best investor</Chip>
+                    <h2 className="mt-3 font-display text-2xl font-extrabold leading-tight">{bestInvestor.name}</h2>
+                    <p className="mt-2 text-sm text-textsec">
+                      Backed {bestInvestor.picks} {bestInvestor.picks === 1 ? 'startup' : 'startups'} for a combined
+                      ${bestInvestor.invested.toLocaleString()} — the highest revenue-weighted portfolio score
+                      in the cohort.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Stat label="Picks" value={bestInvestor.picks} />
+                      <Stat label="Invested" value={fmtUSD(bestInvestor.invested)} />
+                    </div>
+                  </Bento>
+                ) : (
+                  <Bento>
+                    <Chip tone="sky" icon={<TrophyIcon size={12} />}>best investor</Chip>
+                    <h2 className="mt-3 font-display text-2xl font-extrabold leading-tight">No investors yet</h2>
+                    <p className="mt-2 text-sm text-textsec">
+                      Be the first — browse the cohort, open a card, hit Invest. The investor with the highest
+                      revenue-weighted portfolio wins this slot.
+                    </p>
+                  </Bento>
+                )}
+              </div>
+            ) : null}
+
+            {/* Per-startup cards — only after the reveal */}
+            {!revealing ? (
             <section className="mt-8">
               <div className="font-display text-2xl font-extrabold">Per-startup verdict</div>
               <p className="text-sm text-textsec">User review · market review · 12-month projection · recommendation</p>
@@ -380,16 +369,19 @@ export function Leaderboard() {
                 ))}
               </ul>
             </section>
+            ) : null}
 
-            {/* Final summary */}
-            <Bento className="mt-8">
-              <div className="font-display text-xl font-extrabold">Cohort verdict</div>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <SummaryCard tone="text-neon-500" label="users" body={forecast.userSummary} />
-                <SummaryCard tone="text-softblue" label="market" body={forecast.marketSummary} />
-                <SummaryCard tone="text-signal-violet" label="overall" body={forecast.overallSummary} />
-              </div>
-            </Bento>
+            {/* Final summary — only after the reveal */}
+            {!revealing ? (
+              <Bento className="mt-8">
+                <div className="font-display text-xl font-extrabold">Cohort verdict</div>
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <SummaryCard tone="text-neon-500" label="users" body={forecast.userSummary} />
+                  <SummaryCard tone="text-softblue" label="market" body={forecast.marketSummary} />
+                  <SummaryCard tone="text-signal-violet" label="overall" body={forecast.overallSummary} />
+                </div>
+              </Bento>
+            ) : null}
           </>
         ) : null}
       </main>
@@ -399,9 +391,9 @@ export function Leaderboard() {
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-surfaceLight bg-base px-3 py-2">
+    <div className="rounded-2xl border border-surfaceLight bg-surface px-4 py-3 min-w-[120px]">
       <div className="display-mono">{label}</div>
-      <div className="mt-0.5 font-display text-base font-extrabold">{value}</div>
+      <div className="mt-1 font-display text-xl font-extrabold leading-none">{value}</div>
     </div>
   );
 }
