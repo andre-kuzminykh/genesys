@@ -1,21 +1,18 @@
-import { useState } from 'react';
-
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
+// Cursor sits at the visual baseline of the lowercase "n/e/s" — descenders
+// of "g/y" hang below it, matching how a terminal underscore reads.
+// Empirically ~22% of font-size in Outfit Black with leading-none.
 const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; cursorBottom: number; pl: number }> = {
-  sm: { font: 18, cursorW: 6,  cursorH: 2, cursorBottom: 2,  pl: 12 },
-  md: { font: 26, cursorW: 8,  cursorH: 3, cursorBottom: 3,  pl: 16 },
-  lg: { font: 42, cursorW: 12, cursorH: 4, cursorBottom: 5,  pl: 22 },
-  xl: { font: 96, cursorW: 18, cursorH: 5, cursorBottom: 10, pl: 32 },
+  sm: { font: 18, cursorW: 6,  cursorH: 2, cursorBottom: 4,  pl: 11 },
+  md: { font: 26, cursorW: 8,  cursorH: 3, cursorBottom: 6,  pl: 14 },
+  lg: { font: 42, cursorW: 12, cursorH: 4, cursorBottom: 9,  pl: 20 },
+  xl: { font: 96, cursorW: 18, cursorH: 5, cursorBottom: 21, pl: 30 },
 };
 
 /**
- * Brand wordmark: blinking neon "_" cursor positioned absolutely in front of
- * the wordmark (image when /wordmark.png is present, CSS-rendered Outfit 900
- * fallback otherwise).
- *
- * Absolute-positioning the cursor avoids the inline-flex baseline issue we hit
- * when the wordmark image and the cursor have very different intrinsic heights.
+ * Brand wordmark: blinking neon "_" cursor anchored to the typography baseline
+ * of an Outfit 900 "genesys" lowercase wordmark.
  */
 export function Wordmark({
   size = 'md',
@@ -29,8 +26,6 @@ export function Wordmark({
   withCursor?: boolean;
 }) {
   const s = SIZES[size];
-  const [imgOk, setImgOk] = useState(true);
-  const targetHeight = Math.round(s.font * 1.15);
 
   return (
     <span
@@ -50,21 +45,12 @@ export function Wordmark({
           aria-hidden
         />
       ) : null}
-      {imgOk ? (
-        <img
-          src="/wordmark.png"
-          alt="Genesys"
-          onError={() => setImgOk(false)}
-          style={{ height: targetHeight, width: 'auto', display: 'block' }}
-        />
-      ) : (
-        <span
-          className="block text-softblue"
-          style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em' }}
-        >
-          genesys
-        </span>
-      )}
+      <span
+        className="block text-softblue"
+        style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em' }}
+      >
+        genesys
+      </span>
     </span>
   );
 }
