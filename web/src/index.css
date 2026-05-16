@@ -109,7 +109,7 @@
 
   /* Pill chips */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border;
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border;
   }
   .chip-yellow { @apply text-neon-500 border-neon-500/30 bg-neon-500/10; }
   .chip-yellow-solid { @apply text-ink border-neon-500/0 bg-neon-500; }

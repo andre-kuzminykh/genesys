@@ -24,10 +24,12 @@ export function Chip({
   icon?: ReactNode;
   className?: string;
 }) {
+  // Render icon and content as direct flex children of the chip so they share
+  // the same baseline/centering — no inner wrapper that could shift alignment.
   return (
     <span className={`chip ${TONE[tone]} ${className}`}>
-      {icon}
-      <span>{children}</span>
+      {icon ?? null}
+      {children}
     </span>
   );
 }

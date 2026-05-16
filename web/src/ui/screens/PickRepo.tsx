@@ -96,12 +96,18 @@ export function PickRepo() {
         <Link to="/" aria-label="Genesys home" className="shrink-0">
           <Wordmark size="lg" />
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm">
             <GithubIcon size={14} className="text-textsec" />
             <span>signed in as <span className="font-mono text-neon-500">@{me}</span></span>
           </span>
-          <Link to="/" className="ghost-button shrink-0"><XIcon size={12} /> Cancel</Link>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-full border border-surfaceLight bg-surface px-3 py-1.5 text-sm transition hover:border-neon-500/40 hover:text-neon-500"
+          >
+            <XIcon size={14} className="text-textsec" />
+            <span>Cancel</span>
+          </Link>
         </div>
       </header>
 
@@ -194,11 +200,6 @@ function RepoRow({ row, onPick }: { row: ScanRow; onPick: () => void }) {
               {row.fullName}
               <ExternalLinkIcon size={12} className="text-textsec" />
             </a>
-            {row.isPrivate ? (
-              <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
-                private
-              </span>
-            ) : null}
           </div>
           <div className="mt-2">
             <ScanChips scan={row.scan} />
@@ -211,30 +212,28 @@ function RepoRow({ row, onPick }: { row: ScanRow; onPick: () => void }) {
 }
 
 function ScanChips({ scan }: { scan: RepoScanResult }) {
+  const checkIcon = <CheckIcon size={10} />;
+  const xIcon = <XIcon size={10} />;
   if (scan.kind === 'found') {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Chip tone="green"><CheckIcon size={10} /> spec</Chip>
-        <Chip tone="green"><CheckIcon size={10} /> tests</Chip>
+        <Chip tone="green" icon={checkIcon}>spec</Chip>
+        <Chip tone="green" icon={checkIcon}>tests</Chip>
       </div>
     );
   }
   if (scan.kind === 'partial') {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Chip tone={scan.specPath ? 'green' : 'amber'}>
-          {scan.specPath ? <CheckIcon size={10} /> : <XIcon size={10} />} spec
-        </Chip>
-        <Chip tone={scan.testsPath ? 'green' : 'amber'}>
-          {scan.testsPath ? <CheckIcon size={10} /> : <XIcon size={10} />} tests
-        </Chip>
+        <Chip tone={scan.specPath ? 'green' : 'amber'} icon={scan.specPath ? checkIcon : xIcon}>spec</Chip>
+        <Chip tone={scan.testsPath ? 'green' : 'amber'} icon={scan.testsPath ? checkIcon : xIcon}>tests</Chip>
       </div>
     );
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Chip tone="amber"><XIcon size={10} /> no spec</Chip>
-      <Chip tone="amber"><XIcon size={10} /> no tests</Chip>
+      <Chip tone="amber" icon={xIcon}>no spec</Chip>
+      <Chip tone="amber" icon={xIcon}>no tests</Chip>
     </div>
   );
 }

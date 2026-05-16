@@ -1,23 +1,22 @@
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-// font: type size for the lettering · cursorW/H: dimensions of the neon block ·
-// gap: space between cursor and the first letter · descender: distance from
-// the bottom of the line box to the typographic baseline (≈ font * 0.22 in
-// Outfit Black; tuned visually).
-const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; gap: number; descender: number }> = {
-  sm: { font: 18, cursorW: 6,  cursorH: 2, gap: 4,  descender: 4  },
-  md: { font: 26, cursorW: 8,  cursorH: 3, gap: 5,  descender: 6  },
-  lg: { font: 42, cursorW: 12, cursorH: 4, gap: 8,  descender: 9  },
-  xl: { font: 96, cursorW: 18, cursorH: 5, gap: 14, descender: 21 },
+// Rendered height in CSS px per size. The SVG keeps a fixed 4:1 aspect ratio
+// (100×25 viewBox), so width = height * 4.
+const HEIGHT: Record<Size, number> = {
+  sm: 18,
+  md: 26,
+  lg: 42,
+  xl: 96,
 };
 
 /**
- * Brand wordmark: blinking neon "_" cursor + lowercase "genesys" lettering.
+ * Brand wordmark rendered as an inline SVG image: a neon cursor block sitting
+ * on the typographic baseline of the lowercase "genesys" lettering.
  *
- * Layout: a single inline-block whose height equals the font-size (line-height
- * is forced to 1). The cursor is absolute-positioned from the bottom edge by
- * `descender` px, which lands it exactly on the typographic baseline of the
- * letters; descenders of "g/y" hang naturally below the cursor.
+ * Inline SVG (not <img src="*.svg">) is used on purpose — the document's
+ * Outfit Black @font-face is inherited by inline SVG, while an external SVG
+ * loaded as an image would not have access to those fonts and would degrade
+ * to a system sans-serif.
  */
 export function Wordmark({
   size = 'md',
@@ -30,34 +29,40 @@ export function Wordmark({
   blink?: boolean;
   withCursor?: boolean;
 }) {
-  const s = SIZES[size];
+  const h = HEIGHT[size];
   return (
-    <span
-      className={`relative inline-block font-brand lowercase text-softblue ${className}`}
-      style={{
-        paddingLeft: withCursor ? s.cursorW + s.gap : 0,
-        fontSize: s.font,
-        lineHeight: 1,
-        fontWeight: 900,
-        letterSpacing: '-0.05em',
-      }}
+    <svg
+      role="img"
       aria-label="Genesys"
+      width={h * 4}
+      height={h}
+      viewBox="0 0 100 25"
+      preserveAspectRatio="xMinYMid meet"
+      className={`inline-block align-middle ${className}`}
     >
       {withCursor ? (
-        <span
-          className={`absolute rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
-          style={{
-            left: 0,
-            bottom: s.descender,
-            width: s.cursorW,
-            height: s.cursorH,
-            boxShadow: '0 0 14px rgba(127,255,0,0.55)',
-          }}
-          aria-hidden
+        <rect
+          x={0}
+          y={18}
+          width={5}
+          height={2}
+          rx={0.5}
+          fill="#7FFF00"
+          className={blink ? 'animate-cursorBlink' : ''}
         />
       ) : null}
-      genesys
-    </span>
+      <text
+        x={8}
+        y={20}
+        fontFamily="Outfit, Inter, system-ui, sans-serif"
+        fontWeight={900}
+        fontSize={22}
+        letterSpacing="-1"
+        fill="#82A0FF"
+      >
+        genesys
+      </text>
+    </svg>
   );
 }
 
