@@ -27,7 +27,7 @@ const COVERS = [
   { from: '#82A0FF', to: '#5EE6A8' },
 ];
 
-const LANDING_PAGE_SIZE = 10;
+const LANDING_PAGE_SIZE = 20;
 
 function hashStr(s: string): number {
   let h = 0;
@@ -170,18 +170,21 @@ function PitchMediaTile({ kind, href, accent }: { kind: 'pdf' | 'video'; href: s
 
 function CoverArea({ name, height, badge, image }: { name: string; height: number; badge?: React.ReactNode; image?: string }) {
   const cover = coverFor(name);
+  const [ok, setOk] = useState(true);
+  const showImage = image && ok;
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ height, background: image ? undefined : `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+      style={{ height, background: showImage ? undefined : `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
     >
-      {image ? (
+      {showImage ? (
         <img
           src={image}
           alt={name}
           className="absolute inset-0 h-full w-full object-cover"
           loading="lazy"
           draggable={false}
+          onError={() => setOk(false)}
         />
       ) : (
         <div
@@ -557,14 +560,14 @@ function DetailDialog({
       <button
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
         aria-label="Previous"
-        className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:left-8"
+        className="absolute left-3 top-1/2 -translate-y-1/2 hidden md:inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:left-8"
       >
         <div style={{ transform: 'rotate(180deg)' }}><ArrowRight16 /></div>
       </button>
       <button
         onClick={(e) => { e.stopPropagation(); onNext(); }}
         aria-label="Next"
-        className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:right-8"
+        className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex h-11 w-11 items-center justify-center rounded-full border border-surfaceLight bg-surface text-textsec transition hover:border-neon-500/40 hover:text-neon-500 md:right-8"
       >
         <ArrowRight16 />
       </button>
@@ -881,20 +884,22 @@ export function Landing() {
 
   return (
     <div className="min-h-screen">
-      <header className="mx-auto grid max-w-5xl grid-cols-[auto_1fr_auto] items-center gap-4 px-6 py-5">
-        <Link to="/" aria-label="Genesys home" className="shrink-0">
-          <Wordmark size="xl" />
-        </Link>
+      <header className="mx-auto max-w-5xl px-6 py-5">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
+          <Link to="/" aria-label="Genesys home" className="shrink-0">
+            <span className="md:hidden"><Wordmark size="lg" /></span>
+            <span className="hidden md:inline-flex"><Wordmark size="xl" /></span>
+          </Link>
 
-        <div className="flex justify-center">
-          <div className="flex w-full max-w-[420px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
-            <SearchIcon />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, pitch, hashtag…"
-              className="flex-1 bg-transparent outline-none placeholder:text-textsec"
-            />
+          <div className="order-last w-full md:order-none md:flex-1 md:flex md:justify-center">
+            <div className="flex w-full md:max-w-[420px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
+              <SearchIcon />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, pitch, hashtag…"
+                className="flex-1 bg-transparent outline-none placeholder:text-textsec"
+              />
             {query ? (
               <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear search">
                 <XIcon size={14} />
@@ -925,6 +930,7 @@ export function Landing() {
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
           )}
+        </div>
         </div>
       </header>
 
