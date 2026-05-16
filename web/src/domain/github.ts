@@ -58,9 +58,22 @@ export async function verifyToken(token: string): Promise<GhUser> {
   return ghJSON<GhUser>('/user', token);
 }
 
-/** Recently-pushed repos the authenticated user owns or collaborates on. */
-export async function listRepos(token: string, perPage = 50): Promise<GhRepo[]> {
-  return ghJSON<GhRepo[]>(`/user/repos?sort=pushed&per_page=${perPage}&affiliation=owner,collaborator,organization_member`, token);
+/** Recently-pushed repos the authenticated user owns, collaborates on, or is an org member of.
+ *  Pages through up to 5 pages of 100 (= 500 repos max) so collaborator + org repos
+ *  aren't crowded out by a long list of owned repos. */
+export async function listRepos(token: string, totalCap = 100): Promise<GhRepo[]> {
+  const out: GhRepo[] = [];
+  const perPage = 100;
+  for (let page = 1; out.length < totalCap && page <= 5; page++) {
+    const batch = await ghJSON<GhRepo[]>(
+      `/user/repos?sort=pushed&per_page=${perPage}&page=${page}&affiliation=owner,collaborator,organization_member&visibility=all`,
+      token,
+    );
+    if (batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < perPage) break;
+  }
+  return out.slice(0, totalCap);
 }
 
 /** True if the path exists (file or directory) on the default branch. */
@@ -80,8 +93,8 @@ export interface RealScan {
   isPrivate: boolean;
 }
 
-const SPEC_PATHS = ['genesys/spec', 'docs/spec', 'spec', 'SPEC.md', 'SPEC_v0.1.md'] as const;
-const TEST_PATHS = ['genesys/tests', 'tests', '__tests__', 'test', 'spec'] as const;
+const SPEC_PATHS = ['genesys/spec', 'docs/spec', 'SPEC.md'] as const;
+const TEST_PATHS = ['genesys/tests', 'tests', '__tests__'] as const;
 
 /** Scan a single repo's default branch for canonical spec/tests locations. */
 export async function scanRepoLive(token: string, repo: GhRepo): Promise<RealScan> {
@@ -101,10 +114,24 @@ export async function scanRepoLive(token: string, repo: GhRepo): Promise<RealSca
   };
 }
 
-/** Convenience: list + scan in one call, with a hard cap so we don't burn rate limit. */
-export async function listAndScan(token: string, cap = 20): Promise<RealScan[]> {
-  const repos = await listRepos(token, cap);
-  return Promise.all(repos.map((r) => scanRepoLive(token, r)));
+/** Convenience: list everything affiliated, then scan the top-N most recently pushed.
+ *  Listing is cheap (1-5 calls); scanning is per-repo (≈ 6 paths each), so we cap. */
+export async function listAndScan(token: string, listCap = 100, scanCap = 50): Promise<RealScan[]> {
+  const repos = await listRepos(token, listCap);
+  const top = repos.slice(0, scanCap);
+  const scanned = await Promise.all(top.map((r) => scanRepoLive(token, r)));
+  // For repos beyond scanCap, return them with hasSpec/hasTests=false (no scan ran).
+  const rest: RealScan[] = repos.slice(scanCap).map((r) => ({
+    fullName: r.full_name,
+    language: r.language,
+    stars: r.stargazers_count,
+    pushedDaysAgo: Math.max(0, Math.floor((Date.now() - Date.parse(r.pushed_at)) / 86400000)),
+    hasSpec: false,
+    hasTests: false,
+    defaultBranch: r.default_branch,
+    isPrivate: r.private,
+  }));
+  return [...scanned, ...rest];
 }
 
 /** Heuristic: does the input look like a GitHub PAT? */

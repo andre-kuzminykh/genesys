@@ -46,6 +46,7 @@ export function PickRepo() {
 
   const [rows, setRows] = useState<ScanRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   const mockRows = useMemo(() => myRepos().map(fromMock), [myRepos]);
 
@@ -57,7 +58,9 @@ export function PickRepo() {
     }
     setRows(null);
     setErr(null);
-    listAndScan(token, 20)
+    // Up to 100 repos via paged listing (owner + collaborator + org-member),
+    // scan top 50 most-recently-pushed. Anything beyond is listed but not scanned.
+    listAndScan(token, 100, 50)
       .then((scans) => {
         if (!cancelled) setRows(scans.map(fromReal));
       })
@@ -69,6 +72,13 @@ export function PickRepo() {
       });
     return () => { cancelled = true; };
   }, [token, mockRows]);
+
+  const filteredRows = useMemo(() => {
+    if (!rows) return null;
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.fullName.toLowerCase().includes(q) || (r.language ?? '').toLowerCase().includes(q));
+  }, [rows, query]);
 
   const continueWith = (row: ScanRow) => {
     if (row.scan.kind === 'found') {
@@ -114,22 +124,57 @@ export function PickRepo() {
             {[0, 1, 2].map((i) => (
               <div key={i} className="bento h-24 animate-pulse opacity-60" />
             ))}
-            <div className="display-mono">scanning your repos…</div>
+            <div className="display-mono">listing + scanning your repos…</div>
           </div>
         ) : (
-          <ul className="mt-7 space-y-3">
-            {rows.map((row) => (
-              <RepoRow key={row.fullName} row={row} onPick={() => continueWith(row)} />
-            ))}
-            {rows.length === 0 ? (
-              <li className="bento p-6 text-textsec">
-                No repositories visible with this token / handle. <Link to="/" className="text-neon-500 underline">Back home</Link>.
-              </li>
+          <>
+            {/* Search box — shows up only when there's enough rows to be useful */}
+            {rows.length > 5 ? (
+              <div className="mt-7 flex items-center justify-between gap-3">
+                <div className="flex flex-1 items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
+                  <SearchIcon />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search owner/repo or language…"
+                    className="flex-1 bg-transparent outline-none placeholder:text-textsec font-mono text-sm"
+                    spellCheck={false}
+                  />
+                  {query ? (
+                    <button onClick={() => setQuery('')} className="text-textsec hover:text-white" aria-label="Clear">
+                      <XIcon size={12} />
+                    </button>
+                  ) : null}
+                </div>
+                <span className="display-mono whitespace-nowrap">{filteredRows!.length} of {rows.length}</span>
+              </div>
             ) : null}
-          </ul>
+
+            <ul className="mt-5 space-y-3">
+              {filteredRows!.map((row) => (
+                <RepoRow key={row.fullName} row={row} onPick={() => continueWith(row)} />
+              ))}
+              {filteredRows!.length === 0 ? (
+                <li className="bento p-6 text-textsec">
+                  {rows.length === 0
+                    ? <>No repositories visible with this token / handle. <Link to="/" className="text-neon-500 underline">Back home</Link>.</>
+                    : <>No repositories match "{query}". Clear the filter or pick from the {rows.length} available.</>}
+                </li>
+              ) : null}
+            </ul>
+          </>
         )}
       </section>
     </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="text-textsec">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
   );
 }
 
