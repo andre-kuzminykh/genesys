@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
 // Cursor sits at the visual baseline of the lowercase "n/e/s" — descenders
@@ -11,8 +13,11 @@ const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; curs
 };
 
 /**
- * Brand wordmark: blinking neon "_" cursor anchored to the typography baseline
- * of an Outfit 900 "genesys" lowercase wordmark.
+ * Brand wordmark: blinking neon "_" cursor + "genesys" lettering.
+ *
+ * Renders an <img src='/wordmark.png' /> if present (drop your own logo at
+ * web/public/wordmark.png), otherwise falls back to a CSS-rendered Outfit 900
+ * lowercase wordmark.
  */
 export function Wordmark({
   size = 'md',
@@ -26,6 +31,8 @@ export function Wordmark({
   withCursor?: boolean;
 }) {
   const s = SIZES[size];
+  const [imgOk, setImgOk] = useState(true);
+  const targetHeight = Math.round(s.font * 1.15);
 
   return (
     <span
@@ -45,12 +52,21 @@ export function Wordmark({
           aria-hidden
         />
       ) : null}
-      <span
-        className="block text-softblue"
-        style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em' }}
-      >
-        genesys
-      </span>
+      {imgOk ? (
+        <img
+          src="/wordmark.png"
+          alt="Genesys"
+          onError={() => setImgOk(false)}
+          style={{ height: targetHeight, width: 'auto', display: 'block' }}
+        />
+      ) : (
+        <span
+          className="block text-softblue"
+          style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em' }}
+        >
+          genesys
+        </span>
+      )}
     </span>
   );
 }

@@ -11,12 +11,6 @@ export function Login() {
           <Wordmark size="lg" />
         </Link>
 
-        <h1 className="font-display text-5xl font-extrabold leading-tight tracking-tight">
-          One door in.
-          <br />
-          <span className="text-neon-500">GitHub only.</span>
-        </h1>
-
         <Bento padding="p-7" className="mt-10 glow-yellow">
           <div className="flex items-center justify-center gap-2 font-display text-xl font-extrabold">
             <GithubIcon size={20} />
