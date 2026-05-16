@@ -14,6 +14,7 @@ import type { LlmPort, MonthlyPoint, UserReview, MarketReview } from '@/domain/s
 import type { PersonaId, Startup } from '@/domain/types';
 
 const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+const RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-4o';
 
 export interface OpenAIConfig {
@@ -77,6 +78,50 @@ export class OpenAILlmAdapter implements LlmPort {
     }
   }
 
+  /**
+   * Variant of `chat` that uses the Responses API with the `web_search_preview`
+   * tool, so the model can pull current public web content into its analysis.
+   * Slower (5-15 s/call) but produces grounded output for market questions.
+   */
+  private async chatWithSearch<T>(prompt: string, opts: { max_tokens?: number; temperature?: number } = {}): Promise<T> {
+    const res = await fetch(RESPONSES_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.cfg.model ?? DEFAULT_MODEL,
+        tools: [{ type: 'web_search_preview' }],
+        temperature: opts.temperature ?? 0.5,
+        max_output_tokens: opts.max_tokens ?? 1600,
+        instructions:
+          'You are a senior product/market analyst evaluating early-stage AI-native startups. ' +
+          'You have access to web search and MUST use it before answering market questions. ' +
+          'Return a single JSON object matching the schema in the user message. No prose outside JSON.',
+        input: prompt,
+      }),
+    });
+    if (!res.ok) {
+      let m = `OpenAI responses ${res.status}`;
+      try { const j = await res.json(); if (j?.error?.message) m = j.error.message; } catch { /* ignore */ }
+      throw new OpenAIError(res.status, m);
+    }
+    const json = await res.json();
+    const text = extractResponsesText(json);
+    if (!text) throw new OpenAIError(500, 'OpenAI Responses API returned no text');
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      // The model occasionally wraps JSON in ```json fences or prefaces with prose.
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { return JSON.parse(match[0]) as T; } catch { /* fall through */ }
+      }
+      throw new OpenAIError(500, 'OpenAI Responses API returned invalid JSON');
+    }
+  }
+
   async reviewForUser({ startup, personas }: { startup: Startup; personas: PersonaId[] }): Promise<UserReview> {
     const prompt = `# Task
 You are running a panel of these 5 distinct user personas through a guided product review of an early-stage startup. Each persona has its own bias and objection style.
@@ -129,7 +174,7 @@ ${startup.description ?? '(none)'}
 
   async reviewForMarket({ startup }: { startup: Startup }): Promise<MarketReview> {
     const prompt = `# Task
-You are a market analyst writing a 12-month forward view (May 2026 → May 2027) for an early-stage startup. Your output drives an investor's go/no-go decision, so be specific and opinionated.
+You are a market analyst writing a 12-month forward view (May 2026 → May 2027) for an early-stage startup. Your output drives an investor's go/no-go decision, so be specific and opinionated. Use the web_search_preview tool to ground your analysis in current data.
 
 # Startup
 - Name: ${startup.name}
@@ -141,13 +186,21 @@ You are a market analyst writing a 12-month forward view (May 2026 → May 2027)
 ${startup.description ?? '(none)'}
 """
 
+# Research steps (use web_search_preview)
+Run 2-4 distinct web searches BEFORE answering. Useful queries:
+- "${startup.category} market size 2026"
+- "${startup.hashtags.slice(0, 2).map((h) => h.replace(/-/g, ' ')).join(' ')} startups 2026"
+- "${startup.name} competitors" OR a substitute named in the description
+- recent funding / launches / regulation news in the segment
+
 # What I want
-1. Locate this startup in a SPECIFIC named segment (not just "AI tools"). Estimate the size shape (niche / mid / large) and recent direction (cooling / steady / accelerating).
-2. Name 2-3 incumbents or close substitutes by category — what do users currently do?
-3. Identify the strongest 1-2 tailwinds and the strongest 1-2 headwinds for this segment over the next 12 months.
+1. Locate this startup in a SPECIFIC named segment (not just "AI tools"). Note any 2026 trend you find from search (funding velocity, public launches, regulation, model-cost shifts).
+2. Name 2-3 incumbents or close substitutes by name — what do users currently do? Cite sources where you found them.
+3. Identify the strongest 1-2 tailwinds and the strongest 1-2 headwinds for this segment over the next 12 months, grounded in what you searched.
 4. Score the market 0..100 on how favourable conditions are for a small new entrant in this exact niche. 50 = neutral; 75+ = real pull; <40 = hostile.
-5. Write a 4-6 sentence narrative — segment named, dynamics specific, evidence-driven. Avoid platitudes ("this is a hot market").
-6. Emit 3-6 trend labels with numerical impact in [-0.3, +0.3]. The label is short (#hashtag-style or 2-3 words). Positive = tailwind on this startup's growth, negative = headwind.
+5. Write a 4-6 sentence narrative — segment named, dynamics specific, evidence-driven. Reference at least one finding from your searches.
+6. Emit 3-6 trend labels with numerical impact in [-0.3, +0.3]. Short labels (#hashtag-style or 2-3 words). Positive = tailwind, negative = headwind.
+7. List the 2-4 URLs you actually used.
 
 # Output JSON schema
 {
@@ -155,21 +208,26 @@ ${startup.description ?? '(none)'}
   "incumbents": "<comma-separated 2-3 substitutes>",
   "score": <int 0..100>,
   "notes": "<4-6 sentence market narrative>",
-  "trends": [ { "label": "<short label>", "impact": <float -0.3..0.3> }, ... 3-6 entries ]
+  "trends": [ { "label": "<short label>", "impact": <float -0.3..0.3> }, ... 3-6 entries ],
+  "sources": [ "<https://url>", ... 2-4 entries ]
 }`;
-    const out = await this.chat<{
+    const out = await this.chatWithSearch<{
       segment: string;
       incumbents: string;
       score: number;
       notes: string;
       trends: { label: string; impact: number }[];
-    }>(prompt, { max_tokens: 1200 });
+      sources: string[];
+    }>(prompt, { max_tokens: 1800 });
     const header = out.segment
       ? `Segment: ${out.segment}${out.incumbents ? ` · Substitutes: ${out.incumbents}` : ''}\n\n`
       : '';
+    const footer = Array.isArray(out.sources) && out.sources.length
+      ? `\n\nSources:\n${out.sources.filter((u) => typeof u === 'string').slice(0, 4).map((u) => '· ' + u).join('\n')}`
+      : '';
     return {
       score: clamp(out.score, 0, 100),
-      notes: (header + String(out.notes ?? '')).slice(0, 2000),
+      notes: (header + String(out.notes ?? '') + footer).slice(0, 3000),
       trends: (out.trends ?? []).map((t) => ({ label: String(t.label).slice(0, 40), impact: clamp(t.impact, -0.3, 0.3) })),
     };
   }
@@ -254,4 +312,22 @@ A real recommendation — not a fortune cookie. Structure it as 4-7 sentences th
 function clamp(n: number, lo: number, hi: number): number {
   if (!Number.isFinite(n)) return lo;
   return Math.max(lo, Math.min(hi, n));
+}
+
+// Pull the final assistant text from a /v1/responses payload. The convenience
+// helper `output_text` is preferred when present; otherwise walk the structured
+// `output` array for a `message` item with an `output_text` content block.
+function extractResponsesText(json: any): string | null {
+  if (typeof json?.output_text === 'string' && json.output_text.length > 0) {
+    return json.output_text;
+  }
+  const items = Array.isArray(json?.output) ? json.output : [];
+  for (const item of items) {
+    if (item?.type !== 'message') continue;
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const c of content) {
+      if (typeof c?.text === 'string' && c.text.length > 0) return c.text;
+    }
+  }
+  return null;
 }

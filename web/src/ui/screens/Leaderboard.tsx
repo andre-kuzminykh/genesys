@@ -198,7 +198,7 @@ export function Leaderboard() {
             </div>
             <p className="mt-2 text-sm text-textsec">
               {HAS_BAKED_KEY
-                ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: 4 prompts × ${startups.length} startups = ICP review, market deep-read, 13-month forecast, recommendation. This takes 30-60 s — sit tight.`
+                ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: ICP user review + market deep-read (with web_search) + 13-month forecast + 30/60/90 recommendation, ${startups.length} startups. ~1-3 min — the market step runs live web search per startup, sit tight.`
                 : 'No OpenAI key configured at build time — falling back to deterministic mock. Set VITE_OPENAI_API_KEY in /opt/genesis/.env and rebuild to get real LLM analysis.'}
             </p>
           </Bento>
