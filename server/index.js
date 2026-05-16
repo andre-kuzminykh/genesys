@@ -1,29 +1,131 @@
-// Minimal GitHub OAuth proxy for Genesys.
-// Exchanges the OAuth `code` for an access_token using client_secret kept on
-// the server side (never shipped to the browser), then redirects back to the
-// SPA with the token in the URL fragment (browsers don't send fragments to
-// servers, so the token doesn't leak through subsequent requests).
+// Genesys backend — GitHub OAuth proxy + shared state API.
+//
+// State persistence: a single JSON file at $STATE_FILE (default /data/state.json).
+// All mutating endpoints take a GitHub bearer token, verify the caller's login
+// against the cohort allowlist, and serialise writes through a tiny in-process
+// promise queue. Listing/reading is unauthenticated so anonymous visitors can
+// still see the leaderboard.
 
 import express from 'express';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
 const PORT = Number(process.env.PORT || 3000);
 const CLIENT_ID = (process.env.GITHUB_CLIENT_ID || '').trim();
 const CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET || '').trim();
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, ''); // no trailing slash
+const STATE_FILE = process.env.STATE_FILE || '/data/state.json';
 const SCOPE = 'read:user repo';
+const CREDITS_PER_INVESTOR = 100000;
+
+// Cohort allowlist — kept in sync with web/src/data/seed.ts. Comparison is
+// case-insensitive because GitHub returns the canonical casing of the login
+// while users may type any variant.
+const ALLOWLIST = new Set([
+  'andre-kuzminykh',
+  'artem-grigorash', 'artem3605', 'darkmechanikum', 'denksworkspace',
+  'hspyroblast', 'kamaliyaal', 'kreativshikkk', 'mashan555',
+  'maxlevitsky', 'mitya139', 'petrenkosofya', 'rusyaew',
+  'somethingnew179', 'weethet',
+].map((h) => h.toLowerCase()));
+
+// Map of startup -> owner handle, used to enforce the no-self-invest rule.
+// Kept in sync with web/src/data/seed.ts (S-* IDs).
+const STARTUP_OWNERS = {
+  'S-artrise':      'artem-grigorash',
+  'S-shelfly':      'artem3605',
+  'S-ailab':        'darkmechanikum',
+  'S-bte':          'denksworkspace',
+  'S-albion':       'hspyroblast',
+  'S-calenmind':    'kamaliyaal',
+  'S-invalerts':    'kreativshikkk',
+  'S-stylify':      'mashan555',
+  'S-clutchup':     'maxlevitsky',
+  'S-arb':          'mitya139',
+  'S-creators':     'petrenkosofya',
+  'S-ztbrowser':    'rusyaew',
+  'S-tglearn':      'somethingnew179',
+  'S-p2pedit':      'weethet',
+  'S-tonloans':     'andre-kuzminykh',
+  'S-fridgefriend': 'andre-kuzminykh',
+};
+
+// ------------------------------ State store --------------------------------
+
+/** @type {{ upvotes: Record<string, string[]>, investments: Array<{startupId:string, investorHandle:string, amount:number, ts:number}> }} */
+let state = { upvotes: {}, investments: [] };
+
+async function loadState() {
+  try {
+    const raw = await fs.readFile(STATE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    state = {
+      upvotes: parsed?.upvotes && typeof parsed.upvotes === 'object' ? parsed.upvotes : {},
+      investments: Array.isArray(parsed?.investments) ? parsed.investments : [],
+    };
+    console.log(`[genesys-api] loaded state from ${STATE_FILE} (` +
+      `${Object.keys(state.upvotes).length} upvote rows, ${state.investments.length} investments)`);
+  } catch (e) {
+    if (e?.code !== 'ENOENT') console.warn(`[genesys-api] failed to load ${STATE_FILE}:`, e?.message);
+    state = { upvotes: {}, investments: [] };
+  }
+}
+
+let writeChain = Promise.resolve();
+function persistState() {
+  writeChain = writeChain.then(async () => {
+    try {
+      await fs.mkdir(path.dirname(STATE_FILE), { recursive: true });
+      const tmp = STATE_FILE + '.tmp';
+      await fs.writeFile(tmp, JSON.stringify(state), 'utf8');
+      await fs.rename(tmp, STATE_FILE);
+    } catch (e) {
+      console.error(`[genesys-api] failed to persist ${STATE_FILE}:`, e);
+    }
+  });
+  return writeChain;
+}
+
+// ---------------------------- GitHub helpers -------------------------------
+
+async function whoami(token) {
+  const r = await fetch('https://api.github.com/user', {
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+  if (!r.ok) throw new Error(`github /user → ${r.status}`);
+  const j = await r.json();
+  if (!j?.login) throw new Error('github /user returned no login');
+  return String(j.login);
+}
+
+function bearer(req) {
+  const h = String(req.headers.authorization || '');
+  const m = /^Bearer\s+(.+)$/i.exec(h) || /^token\s+(.+)$/i.exec(h);
+  return m ? m[1].trim() : null;
+}
+
+// ------------------------------- App ---------------------------------------
 
 const app = express();
+app.use(express.json({ limit: '32kb' }));
 
 app.get('/auth/health', (_req, res) => {
   res.json({
     ok: true,
     configured: Boolean(CLIENT_ID && CLIENT_SECRET && PUBLIC_URL),
     publicUrl: PUBLIC_URL || null,
+    stateFile: STATE_FILE,
+    upvoteRows: Object.keys(state.upvotes).length,
+    investmentCount: state.investments.length,
   });
 });
 
 // Reject obvious placeholder values so users see a clear error instead of GitHub's 404.
-const PLACEHOLDER_RX = /(your|твой|client_id|client_secret|placeholder|<.*>|change_me|todo)/i;
+const PLACEHOLDER_RX = /(your|client_id|client_secret|placeholder|<.*>|change_me|todo)/i;
 
 app.get('/auth/github', (_req, res) => {
   if (!CLIENT_ID || !PUBLIC_URL) {
@@ -38,12 +140,12 @@ app.get('/auth/github', (_req, res) => {
       'Create a real GitHub OAuth App at <a href="https://github.com/settings/applications/new">github.com/settings/applications/new</a>, copy the Client ID + Client Secret into /opt/genesis/.env, then <code>docker compose up -d --force-recreate auth</code>.',
     ));
   }
-  const state = Math.random().toString(36).slice(2);
+  const stateParam = Math.random().toString(36).slice(2);
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: `${PUBLIC_URL}/auth/github/callback`,
     scope: SCOPE,
-    state,
+    state: stateParam,
     allow_signup: 'true',
   });
   res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
@@ -65,12 +167,79 @@ app.get('/auth/github/callback', async (req, res) => {
       console.warn('GitHub did not return access_token:', j);
       return res.redirect('/login?error=no_token');
     }
-    // Token lands in the URL fragment — browsers don't send #… to servers.
     return res.redirect(`/auth/success#token=${encodeURIComponent(token)}`);
   } catch (e) {
     console.error('OAuth exchange failed', e);
     return res.redirect('/login?error=exchange');
   }
+});
+
+// -------------------------- Shared state API -------------------------------
+
+app.get('/api/state', (_req, res) => {
+  res.json({ upvotes: state.upvotes, investments: state.investments });
+});
+
+function totalInvested(handle) {
+  return state.investments
+    .filter((i) => i.investorHandle.toLowerCase() === handle.toLowerCase())
+    .reduce((a, b) => a + b.amount, 0);
+}
+
+app.post('/api/upvote', async (req, res) => {
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ ok: false, error: 'NO_TOKEN' });
+  const startupId = String(req.body?.startupId || '');
+  if (!startupId) return res.status(400).json({ ok: false, error: 'NO_STARTUP_ID' });
+
+  let login;
+  try { login = await whoami(token); }
+  catch (e) { return res.status(401).json({ ok: false, error: 'BAD_TOKEN' }); }
+
+  if (!ALLOWLIST.has(login.toLowerCase())) {
+    return res.status(403).json({ ok: false, error: 'NOT_IN_ALLOWLIST', login });
+  }
+
+  const list = state.upvotes[startupId] ?? [];
+  const idx = list.findIndex((h) => h.toLowerCase() === login.toLowerCase());
+  let voted;
+  if (idx >= 0) { list.splice(idx, 1); voted = false; }
+  else          { list.push(login);    voted = true; }
+  state.upvotes[startupId] = list;
+  await persistState();
+  return res.json({ ok: true, startupId, voted, count: list.length, login });
+});
+
+app.post('/api/invest', async (req, res) => {
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ ok: false, error: 'NO_TOKEN' });
+  const startupId = String(req.body?.startupId || '');
+  const amount = Math.floor(Number(req.body?.amount));
+  if (!startupId) return res.status(400).json({ ok: false, error: 'NO_STARTUP_ID' });
+  if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ ok: false, error: 'INVALID_AMOUNT' });
+
+  let login;
+  try { login = await whoami(token); }
+  catch (e) { return res.status(401).json({ ok: false, error: 'BAD_TOKEN' }); }
+
+  if (!ALLOWLIST.has(login.toLowerCase())) {
+    return res.status(403).json({ ok: false, error: 'NOT_IN_ALLOWLIST', login });
+  }
+
+  const owner = STARTUP_OWNERS[startupId];
+  if (owner && owner.toLowerCase() === login.toLowerCase()) {
+    return res.status(400).json({ ok: false, error: 'SELF_INVEST_FORBIDDEN' });
+  }
+
+  const spent = totalInvested(login);
+  if (spent + amount > CREDITS_PER_INVESTOR) {
+    return res.status(400).json({ ok: false, error: 'INSUFFICIENT_CREDITS', remaining: CREDITS_PER_INVESTOR - spent });
+  }
+
+  const record = { startupId, investorHandle: login, amount, ts: Date.now() };
+  state.investments.push(record);
+  await persistState();
+  return res.json({ ok: true, investment: record, walletRemaining: CREDITS_PER_INVESTOR - (spent + amount) });
 });
 
 function htmlError(title, body) {
@@ -86,6 +255,16 @@ function htmlError(title, body) {
 </head><body><div class="card"><h1>${title}</h1><p>${body}</p></div></body></html>`;
 }
 
-app.listen(PORT, () => {
-  console.log(`[genesys-auth] listening on :${PORT}, configured=${Boolean(CLIENT_ID && CLIENT_SECRET && PUBLIC_URL)}`);
-});
+await loadState();
+
+// Only listen when invoked as the CLI entrypoint. Tests import this module
+// and start their own ephemeral server — calling `app.listen` at module load
+// time would leak that port and keep the test process from exiting.
+if (process.argv[1] && process.argv[1].endsWith('index.js')) {
+  app.listen(PORT, () => {
+    console.log(`[genesys-auth] listening on :${PORT}, configured=${Boolean(CLIENT_ID && CLIENT_SECRET && PUBLIC_URL)}, state=${STATE_FILE}`);
+  });
+}
+
+// Exported for tests
+export { app, state, loadState, persistState, ALLOWLIST, STARTUP_OWNERS, CREDITS_PER_INVESTOR };

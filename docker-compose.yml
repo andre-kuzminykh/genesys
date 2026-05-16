@@ -31,6 +31,10 @@ services:
       GITHUB_CLIENT_ID:     "${GITHUB_CLIENT_ID:-}"
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
       PUBLIC_URL:           "${PUBLIC_URL:-http://34.62.139.101:8026}"
+      STATE_FILE:           "/data/state.json"
       PORT: "3000"
     expose:
       - "3000"
+    volumes:
+      # Persist shared upvotes + investments across container rebuilds.
+      - ./data:/data

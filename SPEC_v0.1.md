@@ -1128,6 +1128,94 @@ a backend so the key never lands in the client bundle.
 
 ---
 
+## 17. Shared backend state — upvotes & investments persisted on the server (added 2026-05-16)
+
+### 17.1 Why
+
+Up to v0.16 every cohort member saw their own copy of the world. Upvotes
+and investments lived in `localStorage` per browser, so two judges signing
+in on different machines couldn't see each other's votes or each other's
+investments. For the demo to feel like a real cohort marketplace these two
+slices of state have to be visible to everyone simultaneously.
+
+### 17.2 Architecture delta
+
+The existing GitHub OAuth proxy at `server/index.js` is extended into a
+small JSON-on-disk state service:
+
+- `GET /api/state` — unauthenticated read of the whole world (used to
+  populate Landing/Leaderboard at first paint).
+- `POST /api/upvote { startupId }` — authenticated; toggles `state.upvotes[startupId]`
+  to include / exclude the caller's login.
+- `POST /api/invest { startupId, amount }` — authenticated; appends to
+  `state.investments` after self-invest + budget checks.
+
+Persistence: `STATE_FILE` (default `/data/state.json`) — `docker-compose.yml`
+mounts `./data` from the host so the file survives container rebuilds.
+Writes are serialised through a single in-process promise chain and use a
+write-rename atomic swap so a crash can't half-flush the file.
+
+AuthN: every mutating endpoint reads `Authorization: Bearer <github-pat>`
+and calls `GET https://api.github.com/user` to recover the canonical
+`login`. The login is checked against a server-side allowlist that mirrors
+`web/src/data/seed.ts` so non-cohort GitHub users get `403 NOT_IN_ALLOWLIST`
+even if they get hold of a valid token.
+
+AuthZ:
+- Self-invest is forbidden via a server-side `STARTUP_OWNERS` map.
+- Wallet cap is `$100,000` per investor, enforced by summing existing
+  investments for the caller before recording a new one.
+
+nginx (`web/nginx.conf`) gains a `location /api/` block alongside the
+existing `/auth/*` proxy so the SPA can talk to the backend via the same
+origin without any CORS plumbing.
+
+### 17.3 Frontend integration
+
+New `ServerStoreProvider` (`web/src/ui/ServerStore.tsx`):
+
+- Fetches `/api/state` on mount and every 15 s.
+- Exposes `upvoteCount(id)`, `hasVoted(id)`, `totalInvestedBy(handle)`,
+  `walletRemaining(handle)`, `toggleUpvote(id)`, `invest(id, amount)`.
+- Optimistically updates local state on mutation responses; surfaces
+  failures as typed `ApiErrorCode`s for friendly UI messages.
+
+Landing now reads upvotes and investments from the server store, not the
+old `genesys:upvotes:v2` localStorage key or `state.investments` from the
+seeded `AppStore`. The DetailDialog Invest form calls `server.invest(…)`
+and translates the typed error codes into the existing error banner.
+
+### 17.4 New FRs
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-320 | `GET /api/state` MUST return `{ upvotes, investments }` and require no authentication. | TEST-GEN-220 |
+| FR-GEN-321 | `POST /api/upvote` MUST reject calls with no bearer token (`401 NO_TOKEN`). | TEST-GEN-221 |
+| FR-GEN-322 | `POST /api/upvote` MUST reject callers whose GitHub login is not in the cohort allowlist (`403 NOT_IN_ALLOWLIST`). | TEST-GEN-221 |
+| FR-GEN-323 | `POST /api/upvote` MUST toggle the caller's handle in `state.upvotes[startupId]` and persist the change. | TEST-GEN-221 |
+| FR-GEN-324 | `POST /api/invest` MUST reject self-investment (`400 SELF_INVEST_FORBIDDEN`). | TEST-GEN-222 |
+| FR-GEN-325 | `POST /api/invest` MUST reject amounts that would overdraw the $100,000 wallet (`400 INSUFFICIENT_CREDITS`) and report `remaining`. | TEST-GEN-222 |
+| FR-GEN-326 | `POST /api/invest` MUST append the investment to `state.investments` and return the updated `walletRemaining`. | TEST-GEN-222 |
+| FR-GEN-327 | The SPA `ServerStoreProvider` MUST source upvotes and investments from `/api/state` and use `/api/upvote` + `/api/invest` for mutations. | (UI integration) |
+
+### 17.5 Traceability matrix (additions)
+
+| Feature | UC | FR | Test |
+|---|---|---|---|
+| Shared upvote totals across the cohort | — | FR-GEN-320..323, FR-GEN-327 | TEST-GEN-220, TEST-GEN-221 |
+| Cohort-wide invest wallet | — | FR-GEN-324..327 | TEST-GEN-222 |
+
+### 17.6 Operational notes
+
+- `docker-compose.yml` mounts `./data:/data` on the host; the file at
+  `./data/state.json` is the database. Snapshot the directory before any
+  destructive container operation.
+- Server tests run with `npm test --prefix server` and stub
+  `globalThis.fetch` only for `api.github.com` so the test client can
+  still hit the loopback Express instance.
+
+---
+
 ## 16. Brand picture wordmark + 2-column Landing grid (added 2026-05-16)
 
 ### 16.1 Wordmark refactor

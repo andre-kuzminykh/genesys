@@ -1,0 +1,2 @@
+# This directory persists the genesys-auth state.json across container rebuilds.
+# It is mounted into the auth container as /data via docker-compose.yml.

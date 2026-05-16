@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './index.css';
 import { AppStoreProvider } from './ui/AppStore';
+import { ServerStoreProvider } from './ui/ServerStore';
 import { ThemeProvider } from './ui/Theme';
 import { AuthGate } from './ui/AuthGate';
 import { AppLayout } from './ui/AppLayout';
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>
       <AppStoreProvider>
+        <ServerStoreProvider>
         <BrowserRouter>
         <Routes>
           {/* public */}
@@ -73,6 +75,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </BrowserRouter>
+        </ServerStoreProvider>
       </AppStoreProvider>
     </ThemeProvider>
   </React.StrictMode>,

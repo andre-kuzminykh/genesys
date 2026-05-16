@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
+import { useServer } from '../ServerStore';
 import { useScores } from '../hooks';
 import type { Score, Startup } from '@/domain/types';
 import { ArrowRightIcon, GithubIcon, MoonIcon, SunIcon, SparkleIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, DollarIcon } from '../design/Icon';
-import { remainingCredits } from '@/domain/investments';
 import { Wordmark } from '../components/Wordmark';
 import { useTheme } from '../Theme';
 import { filterByTags, popularTags, toggleTag } from '@/domain/tags';
@@ -23,24 +23,12 @@ const COVERS = [
   { from: '#82A0FF', to: '#5EE6A8' },
 ];
 
-// One-bit-per-startup vote; bumped to v2 because the schema changed from
-// Record<string, number> to Record<string, true>.
-const UPVOTE_KEY = 'genesys:upvotes:v2';
-
 function hashStr(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
 function coverFor(id: string) { return COVERS[hashStr(id) % COVERS.length]!; }
-function loadUpvotes(): Record<string, true> {
-  if (typeof localStorage === 'undefined') return {};
-  try { const raw = localStorage.getItem(UPVOTE_KEY); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
-}
-function saveUpvotes(v: Record<string, true>) {
-  if (typeof localStorage === 'undefined') return;
-  try { localStorage.setItem(UPVOTE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
-}
 
 function UpArrow({ size = 16, className = '', style }: { size?: number; className?: string; style?: React.CSSProperties }) {
   return (
@@ -473,21 +461,22 @@ function DetailDialog({
   onUpvote: () => void;
   onTagClick: (t: string) => void;
 }) {
-  const { state, invest } = useStore();
+  const { state } = useStore();
+  const server = useServer();
   const me = state.session?.handle;
-  const wallet = me ? remainingCredits(state, state.activeBatchId, me) : null;
+  const wallet = me ? server.walletRemaining(me) : null;
   const [investOpen, setInvestOpen] = useState(false);
   const [amount, setAmount] = useState('1000');
   const [investErr, setInvestErr] = useState<string | null>(null);
+  const [investing, setInvesting] = useState(false);
 
-  // How much THIS user has already invested into THIS startup
   const myInvested = me
-    ? state.investments
-        .filter((i) => i.investorHandle === me && i.startupId === startup.id)
+    ? server.state.investments
+        .filter((i) => i.investorHandle.toLowerCase() === me.toLowerCase() && i.startupId === startup.id)
         .reduce((a, b) => a + b.amount, 0)
     : 0;
 
-  // Pull the latest forecast for this startup, if any
+  // Pull the latest forecast for this startup, if any.
   const forecastForThis = useMemo(() => {
     try {
       const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('genesys:forecast:v1') : null;
@@ -495,22 +484,25 @@ function DetailDialog({
       const sim = JSON.parse(raw) as { startups: Array<{ startupId: string; endUsers: number; totalRevenueUSD: number }> };
       return sim.startups.find((s) => s.startupId === startup.id) ?? null;
     } catch { return null; }
-  }, [startup.id, state.investments.length]);
+  }, [startup.id, server.state.investments.length]);
 
-  function submitInvest() {
+  async function submitInvest() {
     setInvestErr(null);
     const amt = Math.floor(Number(amount));
     if (!Number.isFinite(amt) || amt <= 0) { setInvestErr('Enter a positive amount.'); return; }
-    const r = invest(startup.id, amt);
+    setInvesting(true);
+    const r = await server.invest(startup.id, amt);
+    setInvesting(false);
     if (!r.ok) {
       const m: Record<string, string> = {
         INSUFFICIENT_CREDITS: 'Not enough budget in your wallet.',
-        SELF_INVEST_FORBIDDEN: 'You cannot invest in your own startup.',
+        SELF_INVEST_FORBIDDEN: "You can't invest in your own startup.",
         INVALID_AMOUNT: 'Enter a positive amount.',
-        STARTUP_NOT_PUBLISHED: 'This startup is not published yet.',
-        NO_SESSION: 'Sign in to invest.',
+        NOT_IN_ALLOWLIST: 'Your GitHub handle is not on the cohort allowlist.',
+        BAD_TOKEN: 'Your GitHub session expired — sign in again.',
+        NO_TOKEN: 'Sign in with GitHub to invest.',
       };
-      setInvestErr(m[r.reason] ?? r.reason);
+      setInvestErr(m[r.code] ?? r.message);
       return;
     }
     setInvestOpen(false);
@@ -727,8 +719,8 @@ function DetailDialog({
                         <button type="button" onClick={() => { setInvestOpen(false); setInvestErr(null); }} className="ghost-button !py-2 !px-4 text-sm">
                           Cancel
                         </button>
-                        <button type="submit" className="neon-button !py-2 !px-5 text-sm">
-                          <DollarIcon size={14} /> Confirm
+                        <button type="submit" disabled={investing} className="neon-button !py-2 !px-5 text-sm disabled:opacity-60">
+                          <DollarIcon size={14} /> {investing ? 'Sending…' : 'Confirm'}
                         </button>
                       </div>
                     </div>
@@ -768,27 +760,18 @@ export function Landing() {
     [scores, state.activeBatchId],
   );
 
-  const [upvotes, setUpvotes] = useState<Record<string, true>>(() => loadUpvotes());
+  const server = useServer();
   const [popping, setPopping] = useState<string | null>(null);
 
-  // Pure per-browser vote count. No simulated baseline — every startup
-  // starts at 0 and only the user's single click can move it to 1.
-  const upvoteOf = useCallback(
-    (id: string) => (upvotes[id] ? 1 : 0),
-    [upvotes],
-  );
-  const hasVoted = useCallback((id: string) => Boolean(upvotes[id]), [upvotes]);
+  // Both reads come from the backend (everyone sees the same totals).
+  const upvoteOf = useCallback((id: string) => server.upvoteCount(id), [server]);
+  const hasVoted = useCallback((id: string) => server.hasVoted(id), [server]);
 
   const upvote = useCallback((id: string) => {
     setPopping(id);
-    setUpvotes((prev) => {
-      const next = { ...prev };
-      if (next[id]) delete next[id]; else next[id] = true;
-      saveUpvotes(next);
-      return next;
-    });
+    void server.toggleUpvote(id);
     setTimeout(() => setPopping((p) => (p === id ? null : p)), 400);
-  }, []);
+  }, [server]);
 
   const featured = useMemo(() => {
     return [...published]
@@ -834,15 +817,17 @@ export function Landing() {
   const myHandle = state.session?.handle;
   const activeBatch = state.batches.find((b) => b.id === state.activeBatchId);
   const defaultBudget = activeBatch?.creditsPerInvestor ?? 100000;
-  const myWallet = myHandle ? remainingCredits(state, state.activeBatchId, myHandle) : defaultBudget;
+  const myWallet = myHandle ? server.walletRemaining(myHandle) : defaultBudget;
   const myInvestments: Record<string, number> = useMemo(() => {
     const out: Record<string, number> = {};
     if (!myHandle) return out;
-    for (const i of state.investments) {
-      if (i.investorHandle === myHandle) out[i.startupId] = (out[i.startupId] ?? 0) + i.amount;
+    for (const i of server.state.investments) {
+      if (i.investorHandle.toLowerCase() === myHandle.toLowerCase()) {
+        out[i.startupId] = (out[i.startupId] ?? 0) + i.amount;
+      }
     }
     return out;
-  }, [state.investments, myHandle]);
+  }, [server.state.investments, myHandle]);
 
   return (
     <div className="min-h-screen">
