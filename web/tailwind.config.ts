@@ -87,12 +87,17 @@ const config: Config = {
           '0%,55%': { opacity: '1' },
           '60%,100%': { opacity: '0.15' },
         },
+        tickerFade: {
+          '0%':   { opacity: '0', transform: 'translateY(2px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         pulseGlow:   'pulseGlow 2.4s ease-in-out infinite',
         floaty:      'floaty 4s ease-in-out infinite',
         upvotePop:   'upvotePop 350ms ease-out',
         cursorBlink: 'cursorBlink 1.4s steps(1) infinite',
+        tickerFade:  'tickerFade 220ms ease-out',
       },
     },
   },

@@ -88,18 +88,18 @@ export function Leaderboard() {
   const [stage, setStage] = useState<string>('');
   const [focus, setFocus] = useState<string | null>(null);
   const [adapterErr, setAdapterErr] = useState<string | null>(null);
-  const [activity, setActivity] = useState<string[]>([]);
-  // Queue + drainer so log lines arrive one-at-a-time at a steady rate, even
-  // when 16 phase events fire in a burst. Reads like a news ticker.
+  const [currentLine, setCurrentLine] = useState<string>('');
+  // Queue + drainer: lines arrive one-at-a-time at a steady rate so the
+  // single-line ticker is readable even when 16 events fire in a burst.
   const queueRef = useRef<string[]>([]);
   const drainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const drainIntervalRef = useRef<number>(220);
+  const drainIntervalRef = useRef<number>(800);
   const pumpQueue = useCallback(() => {
     if (drainTimerRef.current) return;
     const tick = () => {
       const next = queueRef.current.shift();
       if (next === undefined) { drainTimerRef.current = null; return; }
-      setActivity((prev) => prev.length >= 500 ? [...prev.slice(-499), next] : [...prev, next]);
+      setCurrentLine(next);
       drainTimerRef.current = setTimeout(tick, drainIntervalRef.current);
     };
     drainTimerRef.current = setTimeout(tick, 0);
@@ -110,7 +110,6 @@ export function Leaderboard() {
   }, [pumpQueue]);
   const setDrainSpeed = useCallback((ms: number) => { drainIntervalRef.current = ms; }, []);
   const drainNow = useCallback(async () => {
-    // Resolve once the visible queue has caught up to whatever's been pushed.
     while (queueRef.current.length > 0 || drainTimerRef.current) {
       await new Promise<void>((r) => setTimeout(r, 50));
     }
@@ -130,14 +129,15 @@ export function Leaderboard() {
     setBusy(true);
     setAdapterErr(null);
     setRevealIndex(0);
-    setActivity([]);
+    queueRef.current = [];
+    setCurrentLine('');
 
     const llm: LlmPort = HAS_BAKED_KEY
       ? new OpenAILlmAdapter({ apiKey: BAKED_OPENAI_KEY, model: BAKED_OPENAI_MODEL })
       : new MockLlmAdapter();
 
     setStage('analysing 16 cohort startups…');
-    setDrainSpeed(220);
+    setDrainSpeed(450);
 
     // Compact analysis feed: ONE narrative line per startup (no per-phase
     // chatter). The interesting stuff lands during the monthly reveal.
@@ -168,8 +168,8 @@ export function Leaderboard() {
     // startup at a steady cadence (events FIRST), THEN advance the chart,
     // then a short breath before the next month. Reads like a news ticker
     // walking through the year.
-    const PER_EVENT_MS = 260;
-    const MONTH_BREATHER_MS = 600;
+    const PER_EVENT_MS = 900;
+    const MONTH_BREATHER_MS = 500;
     const monthLabel = (ym: string) => {
       const [y, m] = ym.split('-').map(Number);
       const d = new Date(y!, m! - 1, 1);
@@ -180,16 +180,12 @@ export function Leaderboard() {
 
     for (let i = 1; i <= result.months.length; i++) {
       const ym = result.months[i - 1]!;
-      const cohortUsers = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.users, 0);
-      const cohortRev = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.revenueUSD, 0);
       setStage(`📅 ${monthLabel(ym)} · month ${i}/${result.months.length}`);
-      logActivity(`📅 ${monthLabel(ym)} — month ${i}/${result.months.length} · cohort ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()}`);
 
       for (const f of result.startups) {
         const cur = f.monthly[i - 1]!;
         const prev = i > 1 ? f.monthly[i - 2]! : { users: 0, revenueUSD: 0 } as { users: number; revenueUSD: number };
         const du = cur.users - prev.users;
-        const dr = cur.revenueUSD - prev.revenueUSD;
         const ev = f.events?.find((x) => x.month === ym);
         const head =
           i === 1 ? '🚀' :
@@ -198,13 +194,10 @@ export function Leaderboard() {
           (prev.users < 500 && cur.users >= 500)   ? '🌟' :
           (prev.users < 1000 && cur.users >= 1000) ? '🌠' :
           (prev.users > 0 && du / prev.users > 0.3) ? '📈' :
-          '·';
-        const numbers = `${cur.users.toLocaleString()} (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`;
-        if (ev?.event) {
-          logActivity(`  ${head} ${ev.event}  —  ${numbers}`);
-        } else {
-          logActivity(`  ${head} ${f.startupName}: ${numbers}`);
-        }
+          '📰';
+        const date = monthLabel(ym);
+        const text = ev?.event ?? `${f.startupName}: ${cur.users.toLocaleString()} users, $${cur.revenueUSD.toLocaleString()} this month.`;
+        logActivity(`${head} ${date} · ${text}`);
       }
 
       // Wait for the dripper to finish emitting THIS month's events before
@@ -261,33 +254,41 @@ export function Leaderboard() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 pb-20">
-        {/* Idle / done states show the run button at the top. While busy, the
-            button moves inside the activity bento so the screen reads as a
-            single, focused "panel is running" surface. */}
-        {!busy ? (
-          <section className="mt-6 flex justify-end">
-            <button onClick={run} className="neon-button">
-              <SparkleIcon /> {forecast ? 'Re-run simulation' : 'Run market simulation'}
+        {/* Single-line news ticker on the left of the row, run/running CTA on
+            the right. Same width as everything else on the page. */}
+        <section className="mt-6">
+          <div className="flex items-stretch gap-3">
+            <div className="flex-1 min-w-0 rounded-2xl border border-surfaceLight bg-surface px-4 py-3">
+              <div
+                key={currentLine}
+                className="flex items-center gap-2 font-mono text-sm text-textsec animate-tickerFade"
+              >
+                {busy ? (
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-neon-500 animate-pulseGlow" />
+                ) : null}
+                <span className="truncate">
+                  {currentLine ||
+                    (busy ? 'spinning up the panel…'
+                          : forecast ? 'last run complete — hit Re-run to refresh'
+                                     : 'idle — hit Run to start the cohort simulation')}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={run}
+              disabled={busy}
+              className="neon-button shrink-0 disabled:opacity-60"
+            >
+              <SparkleIcon /> {busy ? 'Running…' : forecast ? 'Re-run simulation' : 'Run market simulation'}
             </button>
-          </section>
-        ) : null}
+          </div>
+          {stage ? (
+            <div className="mt-2 px-1 font-mono text-[11px] uppercase tracking-wider text-textsec">{stage}</div>
+          ) : null}
+        </section>
 
         {adapterErr ? (
           <div className="mt-4 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{adapterErr}</div>
-        ) : null}
-
-        {busy ? (
-          <div className="mx-auto mt-6 max-w-xl">
-            <Bento tone="sky">
-              <button disabled className="neon-button w-full !py-3 text-base">
-                <SparkleIcon /> Running…
-              </button>
-              {stage ? (
-                <div className="mt-3 text-center font-mono text-[11px] uppercase tracking-wider text-textsec">{stage}</div>
-              ) : null}
-              <ActivityLog lines={activity} />
-            </Bento>
-          </div>
         ) : null}
 
         {!forecast && !busy ? (
