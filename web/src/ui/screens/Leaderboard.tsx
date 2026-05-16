@@ -92,9 +92,10 @@ export function Leaderboard() {
   const logActivity = useCallback((line: string) => {
     setActivity((prev) => {
       const next = [...prev, line];
-      // Keep the buffer trimmed so React doesn't push thousands of nodes
-      // by the end of a 16-startup run.
-      return next.length > 80 ? next.slice(-80) : next;
+      // 16 startups × 4 phases + 13 months × ~17 lines per month = ~290 lines
+      // for a full run. Trim conservatively above that so React doesn't have
+      // to render thousands of nodes if the user kicks off multiple runs.
+      return next.length > 500 ? next.slice(-500) : next;
     });
   }, []);
   const [revealIndex, setRevealIndex] = useState<number>(() => loadCached()?.months.length ?? 0);
@@ -122,20 +123,28 @@ export function Leaderboard() {
       ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: ICP user review + market deep-read (web_search) + 13-month forecast + recommendation, ${startups.length} startups`
       : 'No OpenAI key — running deterministic mock');
 
-    // Per-startup, per-phase progress feed.
-    const PHASE_LABEL: Record<string, string> = {
-      user: 'ICP user panel',
-      market: 'market deep-read (web_search)',
-      forecast: '13-month forecast',
-      recommend: '30/60/90 recommendation',
-    };
+    // Per-startup, per-phase progress feed — formatted as a news ticker
+    // (emoji + short narrative) so reading the log feels like watching a
+    // newsroom rather than a CI build log.
     const onEvent = (e: import('@/domain/simulation').SimulationEvent) => {
       if (e.kind === 'phase-start') {
-        logActivity(`▶ ${e.startupName} · ${PHASE_LABEL[e.phase] ?? e.phase}`);
+        const start: Record<string, string> = {
+          user:      `🎯 ${e.startupName} walks into a room of 5 ICP personas — first impressions in progress…`,
+          market:    `🔍 ${e.startupName}: scanning the live market (web_search) for trends, incumbents, regulation…`,
+          forecast:  `📈 ${e.startupName}: drafting a 13-month users + revenue curve…`,
+          recommend: `🧭 ${e.startupName}: advisor is drafting a 30/60/90 plan…`,
+        };
+        logActivity(start[e.phase] ?? `▶ ${e.startupName} · ${e.phase}`);
       } else if (e.kind === 'phase-done') {
-        logActivity(`  ${e.startupName} · ${PHASE_LABEL[e.phase] ?? e.phase}: ${e.summary}`);
+        const done: Record<string, string> = {
+          user:      `💡 ${e.startupName}: panel verdict — ${e.summary}`,
+          market:    `📰 ${e.startupName}: market read — ${e.summary}`,
+          forecast:  `🚀 ${e.startupName}: forecast lands — ${e.summary}`,
+          recommend: `📝 ${e.startupName}: founder advice ready`,
+        };
+        logActivity(done[e.phase] ?? `  ${e.startupName} · ${e.phase}: ${e.summary}`);
       } else if (e.kind === 'startup-done') {
-        logActivity(`✓ ${e.startupName} done — ${e.endUsers.toLocaleString()} users · $${e.totalRevenueUSD.toLocaleString()}`);
+        logActivity(`🏁 ${e.startupName} — analysis complete · ${e.endUsers.toLocaleString()} users, $${e.totalRevenueUSD.toLocaleString()} year revenue`);
       }
     };
 
@@ -144,24 +153,58 @@ export function Leaderboard() {
       result = await runSimulation(startups, llm, onEvent);
     } catch (e: any) {
       setAdapterErr(`LLM call failed (${e?.message ?? e}). Falling back to a deterministic forecast.`);
-      logActivity(`! LLM failed: ${e?.message ?? e}. Falling back to mock.`);
+      logActivity(`❌ LLM call failed: ${e?.message ?? e}. Falling back to deterministic mock.`);
       result = await runSimulation(startups, new MockLlmAdapter(), onEvent);
     }
 
     saveCached(result);
     setForecast(result);
+    logActivity(`✨ All 16 startups analysed. Rolling the month-by-month tape now…`);
 
-    // Month-by-month reveal — ~3 seconds per month so the user can watch
-    // the curves grow and read the running narrative.
+    // Month-by-month reveal — emit a header per month plus one news line per
+    // startup describing that month's delta + milestone, so the chart growth
+    // is matched by a streaming "news feed" the audience can follow.
+    const MS_PER_MONTH = 2500;
+    const monthLabel = (ym: string) => {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y!, m! - 1, 1);
+      return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
     for (let i = 1; i <= result.months.length; i++) {
       setRevealIndex(i);
+      const ym = result.months[i - 1]!;
       const cohortUsers = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.users, 0);
       const cohortRev = result.startups.reduce((a, f) => a + f.monthly[i - 1]!.revenueUSD, 0);
-      setStage(`Month ${i}/${result.months.length} · ${result.months[i - 1]} · ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()} revenue`);
-      await sleep(3000);
+      setStage(`📅 ${monthLabel(ym)} · ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()} revenue · month ${i}/${result.months.length}`);
+      logActivity(`📅 ${monthLabel(ym)} — month ${i}/${result.months.length} · cohort ${cohortUsers.toLocaleString()} users · $${cohortRev.toLocaleString()}`);
+
+      for (const f of result.startups) {
+        const cur = f.monthly[i - 1]!;
+        const prev = i > 1 ? f.monthly[i - 2]! : { users: 0, revenueUSD: 0 } as { users: number; revenueUSD: number };
+        const du = cur.users - prev.users;
+        const dr = cur.revenueUSD - prev.revenueUSD;
+        const milestone =
+          i === 1                                  ? '🚀 launched MVP' :
+          (prev.users <  100   && cur.users >=  100)   ? '⭐ crossed 100 users' :
+          (prev.users <  500   && cur.users >=  500)   ? '🌟 crossed 500 users' :
+          (prev.users < 1000   && cur.users >= 1000)   ? '🌠 crossed 1k users' :
+          (prev.revenueUSD < 1000   && cur.revenueUSD >= 1000)   ? '💵 first $1k month' :
+          (prev.revenueUSD < 10000  && cur.revenueUSD >= 10000)  ? '💰 first $10k month' :
+          (du < 0)                                 ? '📉 dipped this month' :
+          (prev.users > 0 && du / prev.users > 0.3) ? '📈 strong growth' :
+          null;
+        const head = milestone ?? '·';
+        logActivity(`  ${head} ${f.startupName}: ${cur.users.toLocaleString()} users (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`);
+      }
+
+      await sleep(MS_PER_MONTH);
     }
 
     applyUpvoteBumps(result);
+    logActivity(`🏆 Final tape: ${result.winner.startupName} wins on combined signal.`);
+    // Hold the log open for a moment so the user can read the final lines
+    // before the busy Bento collapses.
+    await sleep(3500);
     setBusy(false);
     setStage('');
   }
@@ -433,17 +476,17 @@ function ActivityLog({ lines }: { lines: string[] }) {
   return (
     <div
       ref={ref}
-      className="mt-3 max-h-56 overflow-y-auto rounded-2xl border border-surfaceLight bg-base/60 p-3 font-mono text-xs text-textsec"
+      className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-surfaceLight bg-base/60 p-3 font-mono text-xs text-textsec"
     >
       {lines.map((line, i) => {
-        const isDone   = line.startsWith('✓');
-        const isStart  = line.startsWith('▶');
-        const isError  = line.startsWith('!');
+        // Lightweight news-ticker coloring keyed on the leading emoji.
+        const head = line.trimStart().slice(0, 2);
         const cls =
-          isDone   ? 'text-signal-green' :
-          isError  ? 'text-danger' :
-          isStart  ? 'text-softblue' :
-                     'text-textsec';
+          head === '🏆' || head === '🏁' || head === '✨' || head === '⭐' || head === '🌟' || head === '🌠' || head === '🚀' || head === '📈' ? 'text-signal-green' :
+          head === '❌' || head === '📉' ? 'text-danger' :
+          head === '📅' ? 'text-neon-500' :
+          head === '🔍' || head === '🎯' || head === '🧭' || head === '📝' ? 'text-softblue' :
+          'text-textsec';
         return (
           <div key={i} className={`whitespace-pre-wrap leading-relaxed ${cls}`}>
             {line}
