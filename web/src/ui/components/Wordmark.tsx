@@ -1,23 +1,23 @@
-import { useState } from 'react';
-
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; gap: number }> = {
-  sm: { font: 18, cursorW: 6,  cursorH: 2, gap: 5 },
-  md: { font: 26, cursorW: 8,  cursorH: 3, gap: 6 },
-  lg: { font: 42, cursorW: 12, cursorH: 4, gap: 8 },
-  xl: { font: 96, cursorW: 18, cursorH: 5, gap: 14 },
+// font: type size for the lettering · cursorW/H: dimensions of the neon block ·
+// gap: space between cursor and the first letter · descender: distance from
+// the bottom of the line box to the typographic baseline (≈ font * 0.22 in
+// Outfit Black; tuned visually).
+const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; gap: number; descender: number }> = {
+  sm: { font: 18, cursorW: 6,  cursorH: 2, gap: 4,  descender: 4  },
+  md: { font: 26, cursorW: 8,  cursorH: 3, gap: 5,  descender: 6  },
+  lg: { font: 42, cursorW: 12, cursorH: 4, gap: 8,  descender: 9  },
+  xl: { font: 96, cursorW: 18, cursorH: 5, gap: 14, descender: 21 },
 };
 
 /**
- * Brand wordmark: blinking neon "_" cursor next to "genesys" lettering.
+ * Brand wordmark: blinking neon "_" cursor + lowercase "genesys" lettering.
  *
- * Layout uses inline-flex with align-items: baseline so the cursor's bottom
- * sits on the typographic baseline of the lowercase letters (descenders of
- * "g/y" hang below the cursor, which is exactly the underscore aesthetic).
- *
- * Renders /wordmark.png if present, otherwise falls back to a CSS-rendered
- * Outfit 900 lowercase wordmark.
+ * Layout: a single inline-block whose height equals the font-size (line-height
+ * is forced to 1). The cursor is absolute-positioned from the bottom edge by
+ * `descender` px, which lands it exactly on the typographic baseline of the
+ * letters; descenders of "g/y" hang naturally below the cursor.
  */
 export function Wordmark({
   size = 'md',
@@ -31,18 +31,24 @@ export function Wordmark({
   withCursor?: boolean;
 }) {
   const s = SIZES[size];
-  const [imgOk, setImgOk] = useState(true);
-
   return (
     <span
-      className={`inline-flex items-baseline font-brand lowercase leading-none ${className}`}
-      style={{ gap: withCursor ? s.gap : 0 }}
+      className={`relative inline-block font-brand lowercase text-softblue ${className}`}
+      style={{
+        paddingLeft: withCursor ? s.cursorW + s.gap : 0,
+        fontSize: s.font,
+        lineHeight: 1,
+        fontWeight: 900,
+        letterSpacing: '-0.05em',
+      }}
       aria-label="Genesys"
     >
       {withCursor ? (
         <span
-          className={`inline-block rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
+          className={`absolute rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
           style={{
+            left: 0,
+            bottom: s.descender,
             width: s.cursorW,
             height: s.cursorH,
             boxShadow: '0 0 14px rgba(127,255,0,0.55)',
@@ -50,21 +56,7 @@ export function Wordmark({
           aria-hidden
         />
       ) : null}
-      {imgOk ? (
-        <img
-          src="/wordmark.png"
-          alt="Genesys"
-          onError={() => setImgOk(false)}
-          style={{ height: s.font, width: 'auto', display: 'block' }}
-        />
-      ) : (
-        <span
-          className="text-softblue"
-          style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em', lineHeight: 1 }}
-        >
-          genesys
-        </span>
-      )}
+      genesys
     </span>
   );
 }

@@ -92,7 +92,7 @@ export function PickRepo() {
 
   return (
     <div className="relative min-h-screen">
-      <header className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-5">
+      <header className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-6 py-5">
         <Link to="/" aria-label="Genesys home" className="shrink-0">
           <Wordmark size="lg" />
         </Link>
@@ -105,7 +105,7 @@ export function PickRepo() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl px-6 pt-6">
+      <section className="mx-auto max-w-4xl px-6 pt-6">
         <h1 className="font-display text-4xl font-extrabold tracking-tight">Pick a repository</h1>
         <p className="mt-3 text-textsec">
           {token
@@ -180,30 +180,28 @@ function SearchIcon() {
 
 function RepoRow({ row, onPick }: { row: ScanRow; onPick: () => void }) {
   return (
-    <li className="bento p-5 transition hover:border-neon-500/30">
-      <div className="flex items-center gap-2">
-        <GithubIcon size={14} className="text-textsec" />
-        <a
-          href={`https://github.com/${row.fullName}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 font-mono text-base hover:text-neon-500 transition"
-        >
-          {row.fullName}
-          <ExternalLinkIcon size={12} className="text-textsec" />
-        </a>
-        {row.isPrivate ? (
-          <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
-            private
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-1.5 text-xs text-textsec">
-        pushed {humanDays(row.pushedDaysAgo)} · branch {row.defaultBranch}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+    <li className="bento p-4 transition hover:border-neon-500/30">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <GithubIcon size={14} className="text-textsec" />
+          <a
+            href={`https://github.com/${row.fullName}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 font-mono text-base hover:text-neon-500 transition"
+          >
+            {row.fullName}
+            <ExternalLinkIcon size={12} className="text-textsec" />
+          </a>
+          {row.isPrivate ? (
+            <span className="rounded-full border border-surfaceLight bg-base px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-textsec">
+              private
+            </span>
+          ) : null}
+        </div>
         <ScanChips scan={row.scan} />
+      </div>
+      <div className="mt-3 flex justify-center">
         <PickButton scan={row.scan} onClick={onPick} />
       </div>
     </li>
@@ -254,10 +252,3 @@ function PickButton({ scan, onClick }: { scan: RepoScanResult; onClick: () => vo
   );
 }
 
-function humanDays(d: number): string {
-  if (d <= 0) return 'today';
-  if (d === 1) return 'yesterday';
-  if (d < 30) return `${d} days ago`;
-  const m = Math.round(d / 30);
-  return `${m} month${m > 1 ? 's' : ''} ago`;
-}

@@ -23,7 +23,9 @@ const COVERS = [
   { from: '#82A0FF', to: '#5EE6A8' },
 ];
 
-const UPVOTE_KEY = 'genesys:upvotes:v1';
+// One-bit-per-startup vote; bumped to v2 because the schema changed from
+// Record<string, number> to Record<string, true>.
+const UPVOTE_KEY = 'genesys:upvotes:v2';
 
 function hashStr(s: string): number {
   let h = 0;
@@ -31,11 +33,11 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 function coverFor(id: string) { return COVERS[hashStr(id) % COVERS.length]!; }
-function loadUpvotes(): Record<string, number> {
+function loadUpvotes(): Record<string, true> {
   if (typeof localStorage === 'undefined') return {};
   try { const raw = localStorage.getItem(UPVOTE_KEY); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
-function saveUpvotes(v: Record<string, number>) {
+function saveUpvotes(v: Record<string, true>) {
   if (typeof localStorage === 'undefined') return;
   try { localStorage.setItem(UPVOTE_KEY, JSON.stringify(v)); } catch { /* ignore */ }
 }
@@ -306,10 +308,11 @@ function FeaturedCarousel({
 // ---------- list card ----------
 
 function ListCard({
-  startup, upvotes, popping, invested, onOpen, onUpvote, onTagClick,
+  startup, upvotes, voted, popping, invested, onOpen, onUpvote, onTagClick,
 }: {
   startup: Startup;
   upvotes: number;
+  voted: boolean;
   popping: boolean;
   invested: number;
   onOpen: () => void;
@@ -333,11 +336,12 @@ function ListCard({
         <p className="mt-4 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
-          {/* Upvote — plain arrow + number, no border/pill */}
+          {/* Upvote — plain arrow + number, no border/pill. One vote per browser; click again to undo. */}
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
-            className={`group inline-flex items-center gap-1.5 text-textsec transition hover:text-neon-500 ${popping ? 'animate-upvotePop' : ''}`}
-            aria-label="Upvote"
+            className={`group inline-flex items-center gap-1.5 transition hover:text-neon-500 ${voted ? 'text-neon-500' : 'text-textsec'} ${popping ? 'animate-upvotePop' : ''}`}
+            aria-label={voted ? 'Remove upvote' : 'Upvote'}
+            aria-pressed={voted}
           >
             <UpArrow size={18} />
             <span className="font-display text-lg font-extrabold leading-none">{upvotes}</span>
@@ -419,19 +423,18 @@ function fmtUSD(n: number): string {
 }
 
 function DetailDialog({
-  startup, score, upvotes, popping,
-  onClose, onNext, onPrev, onUpvote, index, total, onTagClick,
+  startup, score, upvotes, voted, popping,
+  onClose, onNext, onPrev, onUpvote, onTagClick,
 }: {
   startup: Startup;
   score: Score;
   upvotes: number;
+  voted: boolean;
   popping: boolean;
   onClose: () => void;
   onNext: () => void;
   onPrev: () => void;
   onUpvote: () => void;
-  index: number;
-  total: number;
   onTagClick: (t: string) => void;
 }) {
   const { state, invest } = useStore();
@@ -519,15 +522,12 @@ function DetailDialog({
           <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 rounded-full bg-base/80 p-2 text-white hover:bg-base">
             <XIcon size={14} />
           </button>
-          <div className="absolute bottom-3 left-4 font-mono text-xs text-ink/80">
-            {String(index).padStart(2, '0')} / {String(total).padStart(2, '0')}
-          </div>
           <button
             onClick={(e) => { e.stopPropagation(); onUpvote(); }}
-            aria-label="Upvote"
+            aria-label={voted ? 'Remove upvote' : 'Upvote'}
             className={`absolute bottom-3 right-3 flex flex-col items-center gap-1 rounded-2xl bg-ink/55 px-3 py-2 text-white backdrop-blur-md transition hover:bg-ink/70 ${popping ? 'animate-upvotePop' : ''}`}
           >
-            <UpArrow size={22} className="text-neon-500" />
+            <UpArrow size={22} className={voted ? 'text-neon-500' : 'text-white/70'} />
             <span className="font-display text-2xl font-extrabold leading-none">{upvotes}</span>
           </button>
         </div>
@@ -559,20 +559,15 @@ function DetailDialog({
           </div>
         ) : null}
 
-        <div className="px-7 pt-6">
-          <div className="display-mono pb-2">numbers</div>
-          {forecastForThis ? (
+        {forecastForThis ? (
+          <div className="px-7 pt-6">
+            <div className="display-mono pb-2">numbers</div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
               <FlatMetric label="Users (May 27)"  value={forecastForThis.endUsers}                  tone="text-softblue"  />
               <FlatMetric label="Revenue (year)"  value={Math.round(forecastForThis.totalRevenueUSD)} tone="text-neon-500"  prefix="$" />
             </div>
-          ) : (
-            <p className="text-sm text-textsec">
-              No forecast yet — run the cohort simulation on the
-              <Link to="/leaderboard" className="ml-1 text-neon-500 underline">Leaderboard</Link>.
-            </p>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {/* Invest block */}
         <div className="px-7 pt-7">
@@ -683,9 +678,6 @@ function DetailDialog({
           </div>
         </div>
 
-        <div className="px-7 pb-7 pt-5">
-          <div className="display-mono">←/→ to browse · esc to close</div>
-        </div>
       </div>
     </div>
   );
@@ -715,7 +707,7 @@ export function Landing() {
     [scores, state.activeBatchId],
   );
 
-  const [upvotes, setUpvotes] = useState<Record<string, number>>(() => loadUpvotes());
+  const [upvotes, setUpvotes] = useState<Record<string, true>>(() => loadUpvotes());
   const [popping, setPopping] = useState<string | null>(null);
 
   const baseline = useMemo(() => {
@@ -727,14 +719,16 @@ export function Landing() {
   }, [published]);
 
   const upvoteOf = useCallback(
-    (id: string) => (upvotes[id] ?? 0) + (baseline[id] ?? 0),
+    (id: string) => (upvotes[id] ? 1 : 0) + (baseline[id] ?? 0),
     [upvotes, baseline],
   );
+  const hasVoted = useCallback((id: string) => Boolean(upvotes[id]), [upvotes]);
 
   const upvote = useCallback((id: string) => {
     setPopping(id);
     setUpvotes((prev) => {
-      const next = { ...prev, [id]: (prev[id] ?? 0) + 1 };
+      const next = { ...prev };
+      if (next[id]) delete next[id]; else next[id] = true;
       saveUpvotes(next);
       return next;
     });
@@ -863,6 +857,7 @@ export function Landing() {
               <ListCard
                 startup={startup}
                 upvotes={upvoteOf(startup.id)}
+                voted={hasVoted(startup.id)}
                 popping={popping === startup.id}
                 invested={myInvestments[startup.id] ?? 0}
                 onOpen={() => openById(startup.id)}
@@ -884,13 +879,12 @@ export function Landing() {
           startup={open.startup}
           score={open.score}
           upvotes={upvoteOf(open.startup.id)}
+          voted={hasVoted(open.startup.id)}
           popping={popping === open.startup.id}
           onClose={close}
           onNext={next}
           onPrev={prev}
           onUpvote={() => upvote(open.startup.id)}
-          index={openIndex! + 1}
-          total={list.length}
           onTagClick={(t) => setTags((cur) => toggleTag(cur, t))}
         />
       ) : null}
