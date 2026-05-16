@@ -1,68 +1,48 @@
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-// Rendered height in CSS px per size. The SVG keeps a fixed 4:1 aspect ratio
-// (100×25 viewBox), so width = height * 4.
+// Rendered height in CSS px per size. width auto-scales from the image's
+// intrinsic aspect ratio.
 const HEIGHT: Record<Size, number> = {
-  sm: 18,
-  md: 26,
-  lg: 42,
-  xl: 96,
+  sm: 22,
+  md: 32,
+  lg: 56,
+  xl: 128,
 };
 
+// Hosted brand asset. Drop a local copy at web/public/wordmark.png and
+// switch the src to "/wordmark.png" to remove the external dependency.
+const WORDMARK_URL =
+  'https://i.ibb.co/nq3ppQVz/Chat-GPT-Image-May-16-2026-02-21-52-AM.png';
+
 /**
- * Brand wordmark rendered as an inline SVG image: a neon cursor block sitting
- * on the typographic baseline of the lowercase "genesys" lettering.
+ * Brand wordmark — a single raster picture. No programmatic text, no
+ * absolute-positioned cursor. The asset is expected to contain the full
+ * "_ genesys" lock-up already.
  *
- * Inline SVG (not <img src="*.svg">) is used on purpose — the document's
- * Outfit Black @font-face is inherited by inline SVG, while an external SVG
- * loaded as an image would not have access to those fonts and would degrade
- * to a system sans-serif.
+ * The `withCursor` and `blink` props are kept for call-site compatibility
+ * but are no-ops now that the cursor is baked into the artwork.
  */
 export function Wordmark({
   size = 'md',
   className = '',
-  blink = true,
-  withCursor = true,
 }: {
   size?: Size;
   className?: string;
+  /** @deprecated cursor is baked into the artwork */
   blink?: boolean;
+  /** @deprecated cursor is baked into the artwork */
   withCursor?: boolean;
 }) {
   const h = HEIGHT[size];
   return (
-    <svg
-      role="img"
-      aria-label="Genesys"
-      width={h * 4}
+    <img
+      src={WORDMARK_URL}
+      alt="Genesys"
       height={h}
-      viewBox="0 0 100 25"
-      preserveAspectRatio="xMinYMid meet"
       className={`inline-block align-middle ${className}`}
-    >
-      {withCursor ? (
-        <rect
-          x={0}
-          y={18}
-          width={5}
-          height={2}
-          rx={0.5}
-          fill="#7FFF00"
-          className={blink ? 'animate-cursorBlink' : ''}
-        />
-      ) : null}
-      <text
-        x={8}
-        y={20}
-        fontFamily="Outfit, Inter, system-ui, sans-serif"
-        fontWeight={900}
-        fontSize={22}
-        letterSpacing="-1"
-        fill="#82A0FF"
-      >
-        genesys
-      </text>
-    </svg>
+      style={{ height: h, width: 'auto', display: 'block' }}
+      draggable={false}
+    />
   );
 }
 
