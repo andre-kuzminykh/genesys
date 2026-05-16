@@ -740,75 +740,6 @@ function DetailDialog({
   );
 }
 
-function ConnectedMenu({ handle, onSignOut }: { handle: string; onSignOut: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Close when the user clicks outside the menu or hits Escape.
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    window.addEventListener('mousedown', onClick);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('mousedown', onClick);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title={`Signed in as @${handle} — click for sign-out`}
-        className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
-      >
-        <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
-        Connected
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className={`transition-transform ${open ? 'rotate-180' : ''}`}
-          aria-hidden
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-surfaceLight bg-surface shadow-2xl"
-        >
-          <div className="border-b border-surfaceLight px-4 py-3 text-xs text-textsec">
-            signed in as <span className="font-mono text-neon-500">@{handle}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => { setOpen(false); onSignOut(); }}
-            className="block w-full px-4 py-2.5 text-left text-sm font-bold text-textsec transition hover:bg-danger/10 hover:text-danger"
-            role="menuitem"
-          >
-            <XIcon size={12} className="mr-2 inline" /> Sign out
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function FlatMetric({ label, value, tone, prefix = '' }: { label: string; value: number; tone: string; prefix?: string }) {
   const n = Math.round(value);
   const display =
@@ -826,7 +757,7 @@ function FlatMetric({ label, value, tone, prefix = '' }: { label: string; value:
 // ---------- Landing ----------
 
 export function Landing() {
-  const { state, logout } = useStore();
+  const { state } = useStore();
   const scores = useScores();
   const published = useMemo(
     () => scores.filter((s) => s.startup.published && s.startup.batchId === state.activeBatchId),
@@ -943,7 +874,14 @@ export function Landing() {
           </Link>
           <ThemeToggle />
           {myHandle ? (
-            <ConnectedMenu handle={myHandle} onSignOut={logout} />
+            <Link
+              to="/onboarding/repo"
+              title={`Open your repositories — signed in as @${myHandle}`}
+              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
+            >
+              <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
+              Connected
+            </Link>
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
           )}
