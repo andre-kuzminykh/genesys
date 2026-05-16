@@ -341,20 +341,24 @@ function FeaturedCarousel({
           }
         />
 
-        {/* Plain chevrons further out from the card edges. No bg, no border. */}
+        {/* Carousel arrows: tucked outside the card on desktop (no chrome),
+            and brought inside the card edge on mobile with a subtle backdrop so
+            they remain tappable over the cover image. */}
         <button
           onClick={() => setIndex((i) => (i - 1 + total) % total)}
           aria-label="Previous"
-          className="absolute -left-20 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
+          className="absolute left-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-ink/55 text-white backdrop-blur-md transition hover:text-neon-500 md:-left-20 md:bg-transparent md:text-textsec md:backdrop-blur-none md:h-auto md:w-auto md:rounded-none"
         >
-          <ChevronLeftIcon size={40} />
+          <ChevronLeftIcon size={28} className="md:hidden" />
+          <ChevronLeftIcon size={40} className="hidden md:block" />
         </button>
         <button
           onClick={() => setIndex((i) => (i + 1) % total)}
           aria-label="Next"
-          className="absolute -right-20 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
+          className="absolute right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 place-items-center rounded-full bg-ink/55 text-white backdrop-blur-md transition hover:text-neon-500 md:-right-20 md:bg-transparent md:text-textsec md:backdrop-blur-none md:h-auto md:w-auto md:rounded-none"
         >
-          <ChevronRightIcon size={40} />
+          <ChevronRightIcon size={28} className="md:hidden" />
+          <ChevronRightIcon size={40} className="hidden md:block" />
         </button>
       </div>
     </section>
@@ -896,13 +900,14 @@ export function Landing() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto max-w-5xl px-6 py-5">
-        <div className="flex flex-wrap items-center gap-3 md:gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr_auto] md:items-center md:gap-4">
+          {/* Row 1 on mobile (left-justified in 3-col grid on desktop): wordmark */}
           <Link to="/" aria-label="Genesys home" className="shrink-0">
-            <span className="md:hidden"><Wordmark size="lg" /></span>
-            <span className="hidden md:inline-flex"><Wordmark size="xl" /></span>
+            <Wordmark size="xl" />
           </Link>
 
-          <div className="order-last w-full md:order-none md:flex-1 md:flex md:justify-center">
+          {/* Row 3 on mobile (centre column on desktop): search */}
+          <div className="order-last w-full md:order-none md:flex md:justify-center">
             <div className="flex w-full md:max-w-[420px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
               <SearchIcon />
               <input
@@ -919,7 +924,7 @@ export function Landing() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 justify-between md:justify-end md:gap-3">
           <Link
             to="/leaderboard"
             title={myHandle ? 'Open leaderboard · your wallet' : 'Sign in to invest · open leaderboard'}
