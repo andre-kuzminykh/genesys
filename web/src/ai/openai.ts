@@ -2,7 +2,8 @@
  * Real OpenAI adapter for the LlmPort.
  *
  * The API key is supplied at construction time. It is NEVER bundled into the
- * source — the UI prompts the user to paste it and stores it in localStorage.
+ * source — Vite reads it from import.meta.env.VITE_OPENAI_API_KEY at build
+ * time (see web/Dockerfile + docker-compose.yml).
  *
  * Note: OpenAI allow-lists CORS for chat completions, so this works directly
  * from the browser. For production you should still use a backend proxy so
@@ -13,7 +14,7 @@ import type { LlmPort, MonthlyPoint, UserReview, MarketReview } from '@/domain/s
 import type { PersonaId, Startup } from '@/domain/types';
 
 const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'gpt-4o';
 
 export interface OpenAIConfig {
   apiKey: string;
@@ -27,10 +28,17 @@ export class OpenAIError extends Error {
   }
 }
 
+const PERSONA_BIBLE = `Persona reference (use these traits when scoring):
+- impatient: rage-quits friction; loves first-value < 60s; will abandon onboarding > 3 steps
+- technical: cares about API quality, observability, openness, self-host; allergic to magic
+- student: low budget; wants generous free tier; learning-by-doing bias; price-driven churn
+- power_user: keyboard-first; deep customisation; treats apps as workflows, not features
+- skeptical_investor: wants real retention metrics, evidence of pull, not vibes; high bar`;
+
 export class OpenAILlmAdapter implements LlmPort {
   constructor(private cfg: OpenAIConfig) {}
 
-  private async chat<T>(prompt: string): Promise<T> {
+  private async chat<T>(prompt: string, opts: { max_tokens?: number; temperature?: number } = {}): Promise<T> {
     const res = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
@@ -40,9 +48,16 @@ export class OpenAILlmAdapter implements LlmPort {
       body: JSON.stringify({
         model: this.cfg.model ?? DEFAULT_MODEL,
         response_format: { type: 'json_object' },
-        temperature: 0.4,
+        temperature: opts.temperature ?? 0.5,
+        max_tokens: opts.max_tokens ?? 1200,
         messages: [
-          { role: 'system', content: 'You are an analyst that returns ONLY a single JSON object matching the user\'s schema. No prose.' },
+          {
+            role: 'system',
+            content:
+              'You are a senior product/market analyst evaluating early-stage AI-native startups. ' +
+              'You write concrete, opinionated, evidence-driven analyses — never marketing fluff. ' +
+              'You ALWAYS return a single JSON object matching the user\'s schema. No prose outside JSON.',
+          },
           { role: 'user', content: prompt },
         ],
       }),
@@ -63,94 +78,135 @@ export class OpenAILlmAdapter implements LlmPort {
   }
 
   async reviewForUser({ startup, personas }: { startup: Startup; personas: PersonaId[] }): Promise<UserReview> {
-    const prompt = `Act as a panel of these distinct user personas: ${personas.join(', ')}.
+    const prompt = `# Task
+You are running a panel of these 5 distinct user personas through a guided product review of an early-stage startup. Each persona has its own bias and objection style.
 
-Each persona has its own bias:
-- impatient: rage-quits friction, loves first-value < 60s
-- technical: cares about API quality, observability, openness
-- student: low budget, wants free tier or cheap, learning bias
-- power_user: keyboard-first, customisation, depth
-- skeptical_investor: wants real metrics + retention proof
+${PERSONA_BIBLE}
 
-Read the startup:
-Name: ${startup.name}
-Pitch: ${startup.pitch}
-Description: ${startup.description ?? '(none)'}
-Hashtags: ${startup.hashtags.join(', ')}
-Tech execution: ${startup.techExecution}/100
-Pitch score: ${startup.pitchScore}/100
-Market potential: ${startup.marketPotential}/100
+Active panel: ${personas.join(', ')}
 
-Return JSON only:
+# Startup under review
+- Name: ${startup.name}
+- One-line pitch: ${startup.pitch}
+- Category: ${startup.category}
+- Hashtags: ${startup.hashtags.map((h) => '#' + h).join(' ')}
+- Long description (this is what the founder writes about the product):
+"""
+${startup.description ?? '(none)'}
+"""
+- Founder-reported scores (subjective, treat skeptically): tech execution ${startup.techExecution}/100, pitch ${startup.pitchScore}/100, market potential ${startup.marketPotential}/100.
+
+# What I want you to do
+1. INFER the Ideal Customer Profile (ICP) for this product in one sentence — who exactly is the early adopter, what are they doing today, and what is the painful trigger that pushes them to try this. Be specific (role, segment, behaviour, willingness-to-pay).
+2. Mentally walk EACH persona through onboarding → first value → repeat use → invite-a-friend. Score each persona 0..100 on how likely they are to keep using it after week 2.
+3. Aggregate to one panel score (the average rounded to int).
+4. Write a substantive 4-6 sentence narrative review in the panel's voice. It MUST mention specific objections (pricing, friction, missing capability, ICP mismatch) and specific delights (where the product hits) — NOT generic praise. Reference at least one persona by name.
+5. Estimate how many upvotes this would earn on a launch board (0..30).
+
+# Output JSON schema
 {
-  "score": <int 0..100, average satisfaction across the panel>,
-  "notes": "<1-2 sentence summary in the panel's voice>",
-  "upvoteBump": <int 0..15, how much this would bump upvotes on a launch board>
+  "icp": "<one-sentence ICP — who they are, what they do today, what triggers them>",
+  "perPersona": [ { "id": "<persona id>", "score": <int 0..100>, "objection": "<one short objection>" }, ... one per persona ],
+  "score": <int 0..100, average>,
+  "notes": "<4-6 sentence panel review, specific, NOT generic>",
+  "upvoteBump": <int 0..30>
 }`;
-    const out = await this.chat<{ score: number; notes: string; upvoteBump: number }>(prompt);
+    const out = await this.chat<{
+      icp: string;
+      perPersona: { id: string; score: number; objection: string }[];
+      score: number;
+      notes: string;
+      upvoteBump: number;
+    }>(prompt, { max_tokens: 1400 });
+    const icpLine = out.icp ? `ICP: ${out.icp}\n\n` : '';
     return {
       personaIds: personas,
       score: clamp(out.score, 0, 100),
-      notes: String(out.notes ?? '').slice(0, 600),
+      notes: (icpLine + String(out.notes ?? '')).slice(0, 2000),
       upvoteBump: clamp(Math.round(out.upvoteBump), 0, 30),
     };
   }
 
   async reviewForMarket({ startup }: { startup: Startup }): Promise<MarketReview> {
-    const prompt = `You are a market analyst writing a 2-quarter forward view for May 2026 - May 2027.
+    const prompt = `# Task
+You are a market analyst writing a 12-month forward view (May 2026 → May 2027) for an early-stage startup. Your output drives an investor's go/no-go decision, so be specific and opinionated.
 
-Startup:
-Name: ${startup.name}
-Pitch: ${startup.pitch}
-Description: ${startup.description ?? '(none)'}
-Hashtags: ${startup.hashtags.join(', ')}
+# Startup
+- Name: ${startup.name}
+- Pitch: ${startup.pitch}
+- Category: ${startup.category}
+- Hashtags: ${startup.hashtags.map((h) => '#' + h).join(' ')}
+- Long description:
+"""
+${startup.description ?? '(none)'}
+"""
 
-Identify the trends in this segment likely to bend the market in the next 12 months. Each trend has an impact in [-0.3, +0.3] where positive means tailwind.
+# What I want
+1. Locate this startup in a SPECIFIC named segment (not just "AI tools"). Estimate the size shape (niche / mid / large) and recent direction (cooling / steady / accelerating).
+2. Name 2-3 incumbents or close substitutes by category — what do users currently do?
+3. Identify the strongest 1-2 tailwinds and the strongest 1-2 headwinds for this segment over the next 12 months.
+4. Score the market 0..100 on how favourable conditions are for a small new entrant in this exact niche. 50 = neutral; 75+ = real pull; <40 = hostile.
+5. Write a 4-6 sentence narrative — segment named, dynamics specific, evidence-driven. Avoid platitudes ("this is a hot market").
+6. Emit 3-6 trend labels with numerical impact in [-0.3, +0.3]. The label is short (#hashtag-style or 2-3 words). Positive = tailwind on this startup's growth, negative = headwind.
 
-Return JSON only:
+# Output JSON schema
 {
-  "score": <int 0..100, market favorability>,
-  "notes": "<1-2 sentences>",
-  "trends": [
-    { "label": "#hashtag-or-trend", "impact": <float -0.3..0.3> },
-    ... 3 to 6 entries
-  ]
+  "segment": "<specific named segment>",
+  "incumbents": "<comma-separated 2-3 substitutes>",
+  "score": <int 0..100>,
+  "notes": "<4-6 sentence market narrative>",
+  "trends": [ { "label": "<short label>", "impact": <float -0.3..0.3> }, ... 3-6 entries ]
 }`;
-    const out = await this.chat<{ score: number; notes: string; trends: { label: string; impact: number }[] }>(prompt);
+    const out = await this.chat<{
+      segment: string;
+      incumbents: string;
+      score: number;
+      notes: string;
+      trends: { label: string; impact: number }[];
+    }>(prompt, { max_tokens: 1200 });
+    const header = out.segment
+      ? `Segment: ${out.segment}${out.incumbents ? ` · Substitutes: ${out.incumbents}` : ''}\n\n`
+      : '';
     return {
       score: clamp(out.score, 0, 100),
-      notes: String(out.notes ?? '').slice(0, 600),
-      trends: (out.trends ?? []).map((t) => ({ label: String(t.label).slice(0, 30), impact: clamp(t.impact, -0.3, 0.3) })),
+      notes: (header + String(out.notes ?? '')).slice(0, 2000),
+      trends: (out.trends ?? []).map((t) => ({ label: String(t.label).slice(0, 40), impact: clamp(t.impact, -0.3, 0.3) })),
     };
   }
 
   async forecastSeries({
     startup, months, userScore, marketScore,
   }: { startup: Startup; months: string[]; userScore: number; marketScore: number }): Promise<MonthlyPoint[]> {
-    const prompt = `Project monthly users and USD revenue for the startup, month by month, for these months: ${months.join(', ')}.
+    const prompt = `# Task
+Project monthly users + monthly USD revenue for the startup, month by month, for these 13 months: ${months.join(', ')}.
 
-Initial signal:
+# Inputs
+- Startup: ${startup.name}
+- Pitch: ${startup.pitch}
+- Hashtags: ${startup.hashtags.join(', ')}
 - Tech execution: ${startup.techExecution}/100
 - Pitch score: ${startup.pitchScore}/100
 - Market potential: ${startup.marketPotential}/100
-- User review score (qualitative): ${userScore}/100
-- Market review score (qualitative): ${marketScore}/100
-- Segment hashtags: ${startup.hashtags.join(', ')}
+- User panel review score: ${userScore}/100
+- Market review score: ${marketScore}/100
 
-Use compound growth with seasonal variation. ARPU should reflect persona satisfaction.
-Initial month (${months[0]}) users should be in the 50..500 range — a credible MVP launch baseline.
-By the final month (${months[months.length - 1]}) growth should reflect market + product momentum.
+# Modelling guidance
+- Initial month (${months[0]}) users should be in the 50..500 range — a credible MVP launch baseline.
+- Apply compound monthly growth shaped by user + market scores. Higher scores = steeper curve. Cap monthly growth at ~25%.
+- Add mild seasonal variation (summer dip, autumn spike).
+- ARPU should reflect persona satisfaction (low if user score < 40, mid 40-70, high > 70).
+- By month 13 the curve should reflect both product pull (user score) AND market timing (market score) — not just one.
+- Returned numbers must be integers.
 
-Return JSON only:
+# Output JSON schema
 {
   "monthly": [
-    { "month": "2026-05", "users": <int>, "revenueUSD": <int> },
+    { "month": "${months[0]}", "users": <int>, "revenueUSD": <int> },
     ... ${months.length} entries, in the same order as the input months list
   ]
 }`;
-    const out = await this.chat<{ monthly: MonthlyPoint[] }>(prompt);
+    const out = await this.chat<{ monthly: MonthlyPoint[] }>(prompt, { max_tokens: 1400, temperature: 0.3 });
     const arr = Array.isArray(out.monthly) ? out.monthly : [];
-    // pad/trim to exact months and clamp negatives
     return months.map((m, i) => {
       const p = arr[i] ?? { month: m, users: 0, revenueUSD: 0 };
       return {
@@ -164,17 +220,34 @@ Return JSON only:
   async recommend({
     startup, userReview, marketReview,
   }: { startup: Startup; userReview: UserReview; marketReview: MarketReview }): Promise<string> {
-    const prompt = `Write a 1-2 sentence concrete prioritized recommendation for the founder.
-Startup: ${startup.name}
-Pitch: ${startup.pitch}
-User review score: ${userReview.score}/100  (${userReview.notes})
-Market review score: ${marketReview.score}/100  (${marketReview.notes})
-Trends: ${marketReview.trends.slice(0, 3).map((t) => t.label).join(', ')}
+    const prompt = `# Task
+You are an experienced advisor giving the founder of an early-stage startup a substantive, non-generic, prioritised recommendation for the next 90 days.
 
-Return JSON only:
-{ "recommendation": "<1-2 sentences>" }`;
-    const out = await this.chat<{ recommendation: string }>(prompt);
-    return String(out.recommendation ?? '').slice(0, 400);
+# Startup
+- Name: ${startup.name}
+- Pitch: ${startup.pitch}
+- Category: ${startup.category}
+- Long description:
+"""
+${startup.description ?? '(none)'}
+"""
+
+# Findings so far
+- User panel score: ${userReview.score}/100. Notes: ${userReview.notes}
+- Market score: ${marketReview.score}/100. Notes: ${marketReview.notes}
+- Top trend signals: ${marketReview.trends.slice(0, 4).map((t) => `${t.label} (${t.impact >= 0 ? '+' : ''}${Math.round(t.impact * 100)}%)`).join(', ') || '—'}
+
+# What I want
+A real recommendation — not a fortune cookie. Structure it as 4-7 sentences that:
+1. Open with the single most important call (double down / pivot wedge / cut scope / kill / change ICP / etc.).
+2. Reference at least one specific finding from the user OR market review by name (objection, ICP mismatch, named substitute, tailwind, etc.) — show you read the analysis.
+3. List 2-3 concrete actions for the next 30/60/90 days. Specific actions, not "improve onboarding". Examples of specific: "ship a 60-second-to-first-value demo flow", "publish a benchmark vs <named substitute>", "narrow ICP to <specific segment> and rewrite landing accordingly".
+4. End with the one metric the founder should monitor weekly to know if the call is working.
+
+# Output JSON schema
+{ "recommendation": "<4-7 sentence concrete advice>" }`;
+    const out = await this.chat<{ recommendation: string }>(prompt, { max_tokens: 700 });
+    return String(out.recommendation ?? '').slice(0, 1600);
   }
 }
 

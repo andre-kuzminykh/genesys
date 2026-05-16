@@ -197,8 +197,9 @@ export function Leaderboard() {
               <span className="font-display text-base">{stage}</span>
             </div>
             <p className="mt-2 text-sm text-textsec">
-              Mock LLM adapter: deterministic, no network. The interface is identical to a real
-              OpenAI / Anthropic adapter we'll plug in once an API key is wired up.
+              {HAS_BAKED_KEY
+                ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: 4 prompts × ${startups.length} startups = ICP review, market deep-read, 13-month forecast, recommendation. This takes 30-60 s — sit tight.`
+                : 'No OpenAI key configured at build time — falling back to deterministic mock. Set VITE_OPENAI_API_KEY in /opt/genesis/.env and rebuild to get real LLM analysis.'}
             </p>
           </Bento>
         ) : null}
@@ -339,7 +340,7 @@ export function Leaderboard() {
                             <span className="font-display text-3xl font-extrabold text-neon-500">{f.userReview.score}</span>
                             <span className="text-xs text-textsec">/ 100</span>
                           </div>
-                          <p className="mt-2 text-sm text-textsec">{f.userReview.notes}</p>
+                          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-textsec">{f.userReview.notes}</p>
                         </div>
                         <div className="rounded-2xl border border-surfaceLight bg-base p-4">
                           <div className="display-mono">market review</div>
@@ -347,7 +348,7 @@ export function Leaderboard() {
                             <span className="font-display text-3xl font-extrabold text-softblue">{f.marketReview.score}</span>
                             <span className="text-xs text-textsec">/ 100</span>
                           </div>
-                          <p className="mt-2 text-sm text-textsec">{f.marketReview.notes}</p>
+                          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-textsec">{f.marketReview.notes}</p>
                           {f.marketReview.trends.length ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
                               {f.marketReview.trends.slice(0, 5).map((t) => (
@@ -362,7 +363,7 @@ export function Leaderboard() {
 
                       <div className="mt-4 rounded-2xl border border-neon-500/30 bg-neon-500/[0.06] p-4">
                         <div className="display-mono">recommendation</div>
-                        <p className="mt-1 text-sm">{f.recommendation}</p>
+                        <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{f.recommendation}</p>
                       </div>
                     </Bento>
                   </li>
