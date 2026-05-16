@@ -87,37 +87,42 @@ export class OpenAILlmAdapter implements LlmPort {
    * Slower (5-15 s/call) but produces grounded output for market questions.
    */
   private async chatWithSearch<T>(prompt: string, opts: { max_tokens?: number; temperature?: number } = {}): Promise<T> {
-    const res = await fetch(RESPONSES_PROXY_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: this.cfg.model ?? DEFAULT_MODEL,
-        tools: [{ type: 'web_search_preview' }],
-        temperature: opts.temperature ?? 0.5,
-        max_output_tokens: opts.max_tokens ?? 1600,
-        instructions:
-          'You are a senior product/market analyst evaluating early-stage AI-native startups. ' +
-          'You have access to web search and MUST use it before answering market questions. ' +
-          'Return a single JSON object matching the schema in the user message. No prose outside JSON.',
-        input: prompt,
-      }),
-    });
-    if (!res.ok) {
-      let m = `OpenAI responses ${res.status}`;
-      try { const j = await res.json(); if (j?.error?.message) m = j.error.message; } catch { /* ignore */ }
-      throw new OpenAIError(res.status, m);
-    }
-    const json = await res.json();
-    const text = extractResponsesText(json);
-    if (!text) throw new OpenAIError(500, 'OpenAI Responses API returned no text');
+    await acquireSearchSlot();
     try {
-      return JSON.parse(text) as T;
-    } catch {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        try { return JSON.parse(match[0]) as T; } catch { /* fall through */ }
+      const res = await fetch(RESPONSES_PROXY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.cfg.model ?? DEFAULT_MODEL,
+          tools: [{ type: 'web_search_preview' }],
+          temperature: opts.temperature ?? 0.5,
+          max_output_tokens: opts.max_tokens ?? 1600,
+          instructions:
+            'You are a senior product/market analyst evaluating early-stage AI-native startups. ' +
+            'You have access to web search and MUST use it before answering market questions. ' +
+            'Return a single JSON object matching the schema in the user message. No prose outside JSON.',
+          input: prompt,
+        }),
+      });
+      if (!res.ok) {
+        let m = `OpenAI responses ${res.status}`;
+        try { const j = await res.json(); if (j?.error?.message) m = j.error.message; } catch { /* ignore */ }
+        throw new OpenAIError(res.status, m);
       }
-      throw new OpenAIError(500, 'OpenAI Responses API returned invalid JSON');
+      const json = await res.json();
+      const text = extractResponsesText(json);
+      if (!text) throw new OpenAIError(500, 'OpenAI Responses API returned no text');
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try { return JSON.parse(match[0]) as T; } catch { /* fall through */ }
+        }
+        throw new OpenAIError(500, 'OpenAI Responses API returned invalid JSON');
+      }
+    } finally {
+      releaseSearchSlot();
     }
   }
 
@@ -311,6 +316,30 @@ A real recommendation — not a fortune cookie. Structure it as 4-7 sentences th
 function clamp(n: number, lo: number, hi: number): number {
   if (!Number.isFinite(n)) return lo;
   return Math.max(lo, Math.min(hi, n));
+}
+
+// Module-level semaphore that throttles the web_search-backed calls so we
+// don't slam OpenAI's tier with 16 concurrent /v1/responses requests when
+// the cohort simulation kicks off. Other calls (chat.completions) remain
+// unthrottled — they're cheap and CORS-allowed.
+const MAX_SEARCH_CONCURRENCY = 3;
+let activeSearches = 0;
+const searchQueue: Array<() => void> = [];
+
+function acquireSearchSlot(): Promise<void> {
+  return new Promise((resolve) => {
+    if (activeSearches < MAX_SEARCH_CONCURRENCY) {
+      activeSearches += 1;
+      resolve();
+    } else {
+      searchQueue.push(() => { activeSearches += 1; resolve(); });
+    }
+  });
+}
+function releaseSearchSlot() {
+  activeSearches -= 1;
+  const next = searchQueue.shift();
+  if (next) next();
 }
 
 // Pull the final assistant text from a /v1/responses payload. The convenience

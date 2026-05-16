@@ -146,6 +146,14 @@ app.post('/api/llm/responses', async (req, res) => {
   }
   const payload = { ...(req.body ?? {}) };
   if (!payload.model) payload.model = OPENAI_MODEL;
+  const startTs = Date.now();
+  const tag = `[genesys-api] responses ${payload.model}`;
+  console.log(`${tag} → OpenAI`);
+  const ctrl = new AbortController();
+  // 4-minute hard ceiling — web_search calls are typically 5-25 s, but
+  // OpenAI can stall on the Responses API and we'd rather error than
+  // hang nginx workers indefinitely.
+  const timer = setTimeout(() => ctrl.abort(), 240_000);
   try {
     const r = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -154,12 +162,18 @@ app.post('/api/llm/responses', async (req, res) => {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify(payload),
+      signal: ctrl.signal,
     });
     const json = await r.json().catch(() => ({}));
+    const ms = Date.now() - startTs;
+    console.log(`${tag} ← ${r.status} (${ms} ms)`);
     return res.status(r.status).json(json);
   } catch (e) {
-    console.error('[genesys-api] /api/llm/responses proxy failed:', e?.message ?? e);
+    const ms = Date.now() - startTs;
+    console.error(`${tag} FAILED after ${ms} ms:`, e?.message ?? e);
     return res.status(502).json({ ok: false, error: 'PROXY_FAILED', message: String(e?.message ?? e) });
+  } finally {
+    clearTimeout(timer);
   }
 });
 
