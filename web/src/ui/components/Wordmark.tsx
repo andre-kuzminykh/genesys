@@ -4,11 +4,11 @@ type Size = 'sm' | 'md' | 'lg' | 'xl';
 // to the LEFT of the image and aligns with the image's bottom edge, lifted
 // by `cursorMb` so it lands near the typographic baseline of the lettering
 // inside the artwork.
-const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; cursorMl: number; gap: number }> = {
-  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 9,  cursorMl: 10, gap: 4 },
-  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 14, cursorMl: 15, gap: 6 },
-  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 23, cursorMl: 26, gap: 10 },
-  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 53, cursorMl: 60, gap: 18 },
+const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; cursorMl: number; gap: number; picMl: number }> = {
+  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 9,  cursorMl: 0, gap: 0, picMl: -6  },
+  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 14, cursorMl: 0, gap: 0, picMl: -10 },
+  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 23, cursorMl: 0, gap: 0, picMl: -16 },
+  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 53, cursorMl: 0, gap: 0, picMl: -36 },
 };
 
 // Hosted brand asset. Drop a local copy at web/public/wordmark.png and
@@ -60,7 +60,7 @@ export function Wordmark({
         src={WORDMARK_URL}
         alt="Genesys"
         height={s.h}
-        style={{ height: s.h, width: 'auto', display: 'block' }}
+        style={{ height: s.h, width: 'auto', display: 'block', marginLeft: s.picMl }}
         draggable={false}
       />
     </span>

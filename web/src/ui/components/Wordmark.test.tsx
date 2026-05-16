@@ -22,7 +22,7 @@ describe('TEST-GEN-160 — Wordmark renders the hosted brand picture', () => {
 });
 
 describe('TEST-GEN-213 — Wordmark cursor sits on the baseline of the artwork', () => {
-  it('renders a neon cursor sibling with positive marginBottom + marginLeft so it lands on the lettering baseline, not the picture edge', () => {
+  it('renders a neon cursor sibling that sits on the lettering baseline (positive marginBottom) and starts at the wordmark container left edge', () => {
     const { container } = render(<Wordmark size="xl" />);
     const wrapper = container.querySelector('[aria-label="Genesys"]') as HTMLElement;
     expect(wrapper.className).toContain('inline-flex');
@@ -33,12 +33,21 @@ describe('TEST-GEN-213 — Wordmark cursor sits on the baseline of the artwork',
     expect(cursor.className).toContain('bg-neon-500');
 
     const mb = parseFloat(cursor.style.marginBottom);
-    const ml = parseFloat(cursor.style.marginLeft);
-    expect(mb).toBeGreaterThan(0);
-    expect(ml).toBeGreaterThan(0);
     // The xl cursor should sit well above the picture's bottom edge
     // (artwork has bottom padding around the glyphs).
     expect(mb).toBeGreaterThanOrEqual(40);
+
+    // Cursor stays flush with the wordmark container's left edge so it
+    // aligns visually with the card grid below it on the Landing page.
+    const ml = parseFloat(cursor.style.marginLeft || '0');
+    expect(ml).toBe(0);
+  });
+
+  it('pulls the picture left over the cursor area via a negative marginLeft so the lettering reads close to the cursor', () => {
+    const { container } = render(<Wordmark size="xl" />);
+    const img = container.querySelector('img') as HTMLImageElement;
+    const ml = parseFloat(img.style.marginLeft);
+    expect(ml).toBeLessThan(0);
   });
 
   it('omits the cursor sibling when withCursor=false', () => {

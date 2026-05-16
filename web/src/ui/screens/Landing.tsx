@@ -368,7 +368,7 @@ function ListCard({
         >
           {startup.name}
         </h3>
-        <div className="-mt-0.5"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
+        <div className="mt-3"><HashChips tags={startup.hashtags} onClick={onTagClick} limit={6} dense /></div>
         <p className="mt-3 text-[15px] text-textsec leading-relaxed line-clamp-5">{startup.description ?? startup.pitch}</p>
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-surfaceLight pt-4">
@@ -386,8 +386,7 @@ function ListCard({
 
           <div className="flex items-center gap-3">
             {invested > 0 ? (
-              <span className="inline-flex items-center gap-1.5 text-neon-500">
-                <DollarIcon size={14} />
+              <span className="inline-flex items-center text-neon-500">
                 <span className="font-display text-sm font-extrabold leading-none">{fmtUSD(invested)}</span>
               </span>
             ) : null}
@@ -419,7 +418,7 @@ function HashtagBar({
   }, [top, selected]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 pt-2 pb-1">
+    <div className="mx-auto -mt-3 max-w-5xl px-6 pb-1">
       <div className="-mx-2 flex items-center gap-2 overflow-x-auto px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {selected.length > 0 ? (
           <button
