@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
 import { Wordmark } from '../components/Wordmark';
 import { Bento } from '../components/Bento';
@@ -86,6 +86,15 @@ export function Leaderboard() {
   const [stage, setStage] = useState<string>('');
   const [focus, setFocus] = useState<string | null>(null);
   const [adapterErr, setAdapterErr] = useState<string | null>(null);
+  const [activity, setActivity] = useState<string[]>([]);
+  const logActivity = useCallback((line: string) => {
+    setActivity((prev) => {
+      const next = [...prev, line];
+      // Keep the buffer trimmed so React doesn't push thousands of nodes
+      // by the end of a 16-startup run.
+      return next.length > 80 ? next.slice(-80) : next;
+    });
+  }, []);
   const [revealIndex, setRevealIndex] = useState<number>(() => loadCached()?.months.length ?? 0);
   const revealing = forecast !== null && revealIndex < forecast.months.length;
 
@@ -101,19 +110,40 @@ export function Leaderboard() {
     setBusy(true);
     setAdapterErr(null);
     setRevealIndex(0);
+    setActivity([]);
 
     const llm: LlmPort = HAS_BAKED_KEY
       ? new OpenAILlmAdapter({ apiKey: BAKED_OPENAI_KEY, model: BAKED_OPENAI_MODEL })
       : new MockLlmAdapter();
 
-    setStage('Calling LLM: market deep research + persona reviews + 13-month forecast…');
+    setStage(HAS_BAKED_KEY
+      ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: ICP user review + market deep-read (web_search) + 13-month forecast + recommendation, ${startups.length} startups`
+      : 'No OpenAI key — running deterministic mock');
+
+    // Per-startup, per-phase progress feed.
+    const PHASE_LABEL: Record<string, string> = {
+      user: 'ICP user panel',
+      market: 'market deep-read (web_search)',
+      forecast: '13-month forecast',
+      recommend: '30/60/90 recommendation',
+    };
+    const onEvent = (e: import('@/domain/simulation').SimulationEvent) => {
+      if (e.kind === 'phase-start') {
+        logActivity(`▶ ${e.startupName} · ${PHASE_LABEL[e.phase] ?? e.phase}`);
+      } else if (e.kind === 'phase-done') {
+        logActivity(`  ${e.startupName} · ${PHASE_LABEL[e.phase] ?? e.phase}: ${e.summary}`);
+      } else if (e.kind === 'startup-done') {
+        logActivity(`✓ ${e.startupName} done — ${e.endUsers.toLocaleString()} users · $${e.totalRevenueUSD.toLocaleString()}`);
+      }
+    };
 
     let result: SimulationResult;
     try {
-      result = await runSimulation(startups, llm);
+      result = await runSimulation(startups, llm, onEvent);
     } catch (e: any) {
       setAdapterErr(`LLM call failed (${e?.message ?? e}). Falling back to a deterministic forecast.`);
-      result = await runSimulation(startups, new MockLlmAdapter());
+      logActivity(`! LLM failed: ${e?.message ?? e}. Falling back to mock.`);
+      result = await runSimulation(startups, new MockLlmAdapter(), onEvent);
     }
 
     saveCached(result);
@@ -196,11 +226,15 @@ export function Leaderboard() {
               <span className="inline-block h-3 w-3 rounded-full bg-neon-500 animate-pulseGlow" />
               <span className="font-display text-base">{stage}</span>
             </div>
-            <p className="mt-2 text-sm text-textsec">
-              {HAS_BAKED_KEY
-                ? `Calling OpenAI ${BAKED_OPENAI_MODEL}: ICP user review + market deep-read (with web_search) + 13-month forecast + 30/60/90 recommendation, ${startups.length} startups. ~1-3 min — the market step runs live web search per startup, sit tight.`
-                : 'No OpenAI key configured at build time — falling back to deterministic mock. Set VITE_OPENAI_API_KEY in /opt/genesis/.env and rebuild to get real LLM analysis.'}
-            </p>
+            {activity.length > 0 ? (
+              <ActivityLog lines={activity} />
+            ) : (
+              <p className="mt-2 text-sm text-textsec">
+                {HAS_BAKED_KEY
+                  ? 'Spinning up the panel — first events should arrive in a few seconds…'
+                  : 'No OpenAI key configured at build time — falling back to deterministic mock. Set VITE_OPENAI_API_KEY in /opt/genesis/.env and rebuild to get real LLM analysis.'}
+              </p>
+            )}
           </Bento>
         ) : null}
 
@@ -222,9 +256,9 @@ export function Leaderboard() {
             {/* Charts FIRST — these animate as the months reveal */}
             <Bento className="mt-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ChartIcon className="text-softblue" />
-                  <div className="font-display text-lg font-bold">Users · monthly</div>
+                <div className="flex items-center gap-3">
+                  <ChartIcon size={28} className="text-softblue" />
+                  <div className="font-display text-2xl font-extrabold">Users · monthly</div>
                   {revealing ? (
                     <span className="ml-2 chip chip-yellow-solid">
                       {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
@@ -248,9 +282,9 @@ export function Leaderboard() {
 
             <Bento className="mt-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ChartIcon className="text-neon-500" />
-                  <div className="font-display text-lg font-bold">Revenue · monthly (USD)</div>
+                <div className="flex items-center gap-3">
+                  <ChartIcon size={28} className="text-neon-500" />
+                  <div className="font-display text-2xl font-extrabold">Revenue · monthly (USD)</div>
                   {revealing ? (
                     <span className="ml-2 chip chip-yellow-solid">
                       {revealIndex}/{forecast.months.length} · {forecast.months[Math.max(0, revealIndex - 1)]}
@@ -386,6 +420,36 @@ export function Leaderboard() {
           </>
         ) : null}
       </main>
+    </div>
+  );
+}
+
+function ActivityLog({ lines }: { lines: string[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines]);
+  return (
+    <div
+      ref={ref}
+      className="mt-3 max-h-56 overflow-y-auto rounded-2xl border border-surfaceLight bg-base/60 p-3 font-mono text-xs text-textsec"
+    >
+      {lines.map((line, i) => {
+        const isDone   = line.startsWith('✓');
+        const isStart  = line.startsWith('▶');
+        const isError  = line.startsWith('!');
+        const cls =
+          isDone   ? 'text-signal-green' :
+          isError  ? 'text-danger' :
+          isStart  ? 'text-softblue' :
+                     'text-textsec';
+        return (
+          <div key={i} className={`whitespace-pre-wrap leading-relaxed ${cls}`}>
+            {line}
+          </div>
+        );
+      })}
     </div>
   );
 }

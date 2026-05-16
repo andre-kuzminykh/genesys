@@ -220,34 +220,51 @@ export class MockLlmAdapter implements LlmPort {
 
 // ---------- runner ----------
 
+export type SimulationEvent =
+  | { kind: 'phase-start'; startupId: string; startupName: string; phase: 'user' | 'market' | 'forecast' | 'recommend' }
+  | { kind: 'phase-done';  startupId: string; startupName: string; phase: 'user' | 'market' | 'forecast' | 'recommend'; summary: string }
+  | { kind: 'startup-done'; startupId: string; startupName: string; endUsers: number; totalRevenueUSD: number };
+
 export async function runSimulation(
   startups: Startup[],
   llm: LlmPort = new MockLlmAdapter(),
+  onEvent?: (e: SimulationEvent) => void,
 ): Promise<SimulationResult> {
   const months = simulationMonths();
   const personas: PersonaId[] = ['impatient', 'technical', 'student', 'power_user', 'skeptical_investor'];
 
+  const emit = (e: SimulationEvent) => { try { onEvent?.(e); } catch { /* swallow */ } };
+
   const forecasts: StartupForecast[] = await Promise.all(
     startups.map(async (startup) => {
+      const sid = startup.id, sname = startup.name;
+
+      emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'user' });
       const userReview = await llm.reviewForUser({ startup, personas });
+      emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'user',
+        summary: `user panel ${userReview.score}/100, +${userReview.upvoteBump} upvotes projected` });
+
+      emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'market' });
       const marketReview = await llm.reviewForMarket({ startup });
-      const monthly = await llm.forecastSeries({
-        startup,
-        months,
-        userScore: userReview.score,
-        marketScore: marketReview.score,
-      });
+      const sourceCount = (marketReview.notes.match(/https?:\/\//g) || []).length;
+      emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'market',
+        summary: `market ${marketReview.score}/100${sourceCount ? ` · ${sourceCount} sources cited` : ''} · trends: ${marketReview.trends.slice(0, 3).map((t) => t.label).join(', ') || '—'}` });
+
+      emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'forecast' });
+      const monthly = await llm.forecastSeries({ startup, months, userScore: userReview.score, marketScore: marketReview.score });
+      const endUsers = monthly[monthly.length - 1]!.users;
+      const totalRevenueUSD = monthly.reduce((a, m) => a + m.revenueUSD, 0);
+      emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'forecast',
+        summary: `13-month forecast: ${endUsers.toLocaleString()} users by May'27, $${totalRevenueUSD.toLocaleString()} year revenue` });
+
+      emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'recommend' });
       const recommendation = await llm.recommend({ startup, userReview, marketReview });
-      return {
-        startupId: startup.id,
-        startupName: startup.name,
-        monthly,
-        endUsers: monthly[monthly.length - 1]!.users,
-        totalRevenueUSD: monthly.reduce((a, m) => a + m.revenueUSD, 0),
-        userReview,
-        marketReview,
-        recommendation,
-      };
+      emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'recommend',
+        summary: 'founder recommendation ready' });
+
+      emit({ kind: 'startup-done', startupId: sid, startupName: sname, endUsers, totalRevenueUSD });
+
+      return { startupId: sid, startupName: sname, monthly, endUsers, totalRevenueUSD, userReview, marketReview, recommendation };
     }),
   );
 
