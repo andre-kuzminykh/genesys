@@ -32,6 +32,11 @@ services:
       GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
       PUBLIC_URL:           "${PUBLIC_URL:-http://34.62.139.101:8026}"
       STATE_FILE:           "/data/state.json"
+      # Server-side OpenAI key — used by /api/llm/responses to proxy the
+      # Responses (web_search) endpoint that doesn't expose CORS. Falls
+      # back to VITE_OPENAI_API_KEY if you've already set that one.
+      OPENAI_API_KEY:       "${OPENAI_API_KEY:-${VITE_OPENAI_API_KEY:-}}"
+      OPENAI_MODEL:         "${OPENAI_MODEL:-${VITE_OPENAI_MODEL:-gpt-4o}}"
       PORT: "3000"
     expose:
       - "3000"

@@ -18,6 +18,13 @@ const STATE_FILE = process.env.STATE_FILE || '/data/state.json';
 const SCOPE = 'read:user repo';
 const CREDITS_PER_INVESTOR = 100000;
 
+// Server-side OpenAI key — used to proxy the Responses API (web_search) call
+// from the browser. Browser CORS blocks /v1/responses directly, so we sign
+// the request server-side and forward the body unchanged. The key stays out
+// of the JS bundle when callers route through the proxy.
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || '').trim();
+const OPENAI_MODEL = (process.env.OPENAI_MODEL || process.env.VITE_OPENAI_MODEL || 'gpt-4o').trim();
+
 // Cohort allowlist — kept in sync with web/src/data/seed.ts. Comparison is
 // case-insensitive because GitHub returns the canonical casing of the login
 // while users may type any variant.
@@ -123,7 +130,37 @@ app.get('/auth/health', (_req, res) => {
     stateFile: STATE_FILE,
     upvoteRows: Object.keys(state.upvotes).length,
     investmentCount: state.investments.length,
+    openai: { hasKey: Boolean(OPENAI_API_KEY), model: OPENAI_MODEL },
   });
+});
+
+// ----- OpenAI Responses API proxy --------------------------------------------
+// Browser-direct calls to /v1/responses fail with a CORS preflight error
+// (OpenAI does NOT expose CORS on the Responses endpoint, even though they do
+// on /v1/chat/completions). We forward the same request body server-side and
+// return the response payload unchanged so the frontend can keep parsing it
+// the same way.
+app.post('/api/llm/responses', async (req, res) => {
+  if (!OPENAI_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'NO_OPENAI_KEY' });
+  }
+  const payload = { ...(req.body ?? {}) };
+  if (!payload.model) payload.model = OPENAI_MODEL;
+  try {
+    const r = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await r.json().catch(() => ({}));
+    return res.status(r.status).json(json);
+  } catch (e) {
+    console.error('[genesys-api] /api/llm/responses proxy failed:', e?.message ?? e);
+    return res.status(502).json({ ok: false, error: 'PROXY_FAILED', message: String(e?.message ?? e) });
+  }
 });
 
 // Reject obvious placeholder values so users see a clear error instead of GitHub's 404.

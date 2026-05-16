@@ -14,7 +14,10 @@ import type { LlmPort, MonthlyPoint, UserReview, MarketReview } from '@/domain/s
 import type { PersonaId, Startup } from '@/domain/types';
 
 const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const RESPONSES_ENDPOINT = 'https://api.openai.com/v1/responses';
+// Same-origin proxy backed by server/index.js — OpenAI doesn't expose CORS
+// on the Responses API, so calling /v1/responses directly from the browser
+// fails with "Failed to fetch". The proxy signs the request server-side.
+const RESPONSES_PROXY_ENDPOINT = '/api/llm/responses';
 const DEFAULT_MODEL = 'gpt-4o';
 
 export interface OpenAIConfig {
@@ -84,12 +87,9 @@ export class OpenAILlmAdapter implements LlmPort {
    * Slower (5-15 s/call) but produces grounded output for market questions.
    */
   private async chatWithSearch<T>(prompt: string, opts: { max_tokens?: number; temperature?: number } = {}): Promise<T> {
-    const res = await fetch(RESPONSES_ENDPOINT, {
+    const res = await fetch(RESPONSES_PROXY_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.cfg.apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: this.cfg.model ?? DEFAULT_MODEL,
         tools: [{ type: 'web_search_preview' }],
@@ -113,7 +113,6 @@ export class OpenAILlmAdapter implements LlmPort {
     try {
       return JSON.parse(text) as T;
     } catch {
-      // The model occasionally wraps JSON in ```json fences or prefaces with prose.
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         try { return JSON.parse(match[0]) as T; } catch { /* fall through */ }
