@@ -1,14 +1,15 @@
-type Size = 'sm' | 'md' | 'lg' | 'xl';
+type Size = 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 // Picture height in CSS px + cursor dimensions per size. The cursor sits
 // to the LEFT of the image and aligns with the image's bottom edge, lifted
 // by `cursorMb` so it lands near the typographic baseline of the lettering
 // inside the artwork.
 const SIZES: Record<Size, { h: number; cursorW: number; cursorH: number; cursorMb: number; cursorMl: number; gap: number; picMl: number }> = {
-  sm: { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 9,  cursorMl: 0, gap: 2, picMl: -2  },
-  md: { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 14, cursorMl: 0, gap: 3, picMl: -3  },
-  lg: { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 23, cursorMl: 0, gap: 4, picMl: -5  },
-  xl: { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 53, cursorMl: 0, gap: 8, picMl: -10 },
+  sm:    { h: 22,  cursorW: 4,  cursorH: 1.5, cursorMb: 9,  cursorMl: 0, gap: 2,  picMl: -2  },
+  md:    { h: 32,  cursorW: 5,  cursorH: 2,   cursorMb: 14, cursorMl: 0, gap: 3,  picMl: -3  },
+  lg:    { h: 56,  cursorW: 9,  cursorH: 2.5, cursorMb: 23, cursorMl: 0, gap: 4,  picMl: -5  },
+  xl:    { h: 128, cursorW: 20, cursorH: 5,   cursorMb: 53, cursorMl: 0, gap: 8,  picMl: -10 },
+  '2xl': { h: 180, cursorW: 28, cursorH: 7,   cursorMb: 75, cursorMl: 0, gap: 11, picMl: -14 },
 };
 
 // Hosted brand asset. Drop a local copy at web/public/wordmark.png and
