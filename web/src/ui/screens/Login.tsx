@@ -11,7 +11,7 @@ export function Login() {
             <Wordmark size="2xl" />
           </div>
 
-          <a href="/auth/github" className="neon-button mt-8 w-full text-lg">
+          <a href="/auth/github" className="neon-button -mt-6 w-full text-lg">
             <GithubIcon size={22} /> Continue with GitHub
           </a>
         </Bento>
