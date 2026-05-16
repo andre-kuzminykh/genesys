@@ -36,6 +36,13 @@ export interface MarketReview {
   trends: { label: string; impact: number }[];
 }
 
+export interface MonthlyEvent {
+  /** "YYYY-MM" — must match an entry in MonthlyPoint */
+  month: string;
+  /** 10-20 word narrative — plausibly grounded in world/segment events */
+  event: string;
+}
+
 export interface StartupForecast {
   startupId: string;
   startupName: string;
@@ -47,6 +54,8 @@ export interface StartupForecast {
   userReview: UserReview;
   marketReview: MarketReview;
   recommendation: string;
+  /** Per-month news ticker, one entry per month in the forecast. */
+  events: MonthlyEvent[];
 }
 
 export interface SimulationResult {
@@ -65,7 +74,13 @@ export interface LlmPort {
   reviewForUser(input: { startup: Startup; personas: PersonaId[] }): Promise<UserReview>;
   reviewForMarket(input: { startup: Startup }): Promise<MarketReview>;
   forecastSeries(input: { startup: Startup; months: string[]; userScore: number; marketScore: number }): Promise<MonthlyPoint[]>;
-  recommend(input: { startup: Startup; userReview: UserReview; marketReview: MarketReview }): Promise<string>;
+  recommend(input: { startup: Startup; userReview: UserReview; marketReview: MarketReview; events: MonthlyEvent[] }): Promise<string>;
+  /**
+   * Produce a per-month news ticker for the startup that matches the forecast curve.
+   * Each event must include WHAT happened (product action / world event) AND a brief
+   * because-clause so the recommendation step can reference concrete causes.
+   */
+  narrativeSeries(input: { startup: Startup; monthly: MonthlyPoint[]; userReview: UserReview; marketReview: MarketReview }): Promise<MonthlyEvent[]>;
 }
 
 // ---------- helpers ----------
@@ -204,7 +219,7 @@ export class MockLlmAdapter implements LlmPort {
     });
   }
 
-  async recommend({ startup, userReview, marketReview }: { startup: Startup; userReview: UserReview; marketReview: MarketReview }): Promise<string> {
+  async recommend({ startup, userReview, marketReview }: { startup: Startup; userReview: UserReview; marketReview: MarketReview; events: MonthlyEvent[] }): Promise<string> {
     if (userReview.score >= 70 && marketReview.score >= 70) {
       return `Double-down. ${startup.name} has product-pull AND market-pull. Spend on distribution and lock the segment within 2 quarters.`;
     }
@@ -216,13 +231,30 @@ export class MockLlmAdapter implements LlmPort {
     }
     return `Headwinds + cool reception. Either re-narrate the pitch around a sharper persona, or graduate to a stronger founder/market fit.`;
   }
+
+  async narrativeSeries({ startup, monthly }: { startup: Startup; monthly: MonthlyPoint[]; userReview: UserReview; marketReview: MarketReview }): Promise<MonthlyEvent[]> {
+    // Deterministic fallback — milestone + delta-driven, used when no LLM key.
+    return monthly.map((p, i) => {
+      const prev = i > 0 ? monthly[i - 1]! : { users: 0, revenueUSD: 0 };
+      const du = p.users - prev.users;
+      if (i === 0)                           return { month: p.month, event: `${startup.name} launches MVP because the founder finally cuts scope to one wedge.` };
+      if (prev.users < 100 && p.users >= 100) return { month: p.month, event: `${startup.name} crosses 100 users — because an early Reddit/HN post lands organically.` };
+      if (prev.users < 500 && p.users >= 500) return { month: p.month, event: `${startup.name} crosses 500 users — because referral loop kicks in.` };
+      if (prev.users < 1000 && p.users >= 1000) return { month: p.month, event: `${startup.name} crosses 1k users — because a niche influencer features the product.` };
+      if (du < 0)                            return { month: p.month, event: `${startup.name} dips this month because a key persona segment churned to a substitute.` };
+      if (prev.users > 0 && du / prev.users > 0.3) return { month: p.month, event: `${startup.name} sees strong growth because activation copy got rewritten around the ICP.` };
+      return { month: p.month, event: `${startup.name} ships incremental improvements; small steady growth, no breakout signal.` };
+    });
+  }
 }
 
 // ---------- runner ----------
 
+export type SimulationPhase = 'user' | 'market' | 'forecast' | 'narrative' | 'recommend';
+
 export type SimulationEvent =
-  | { kind: 'phase-start'; startupId: string; startupName: string; phase: 'user' | 'market' | 'forecast' | 'recommend' }
-  | { kind: 'phase-done';  startupId: string; startupName: string; phase: 'user' | 'market' | 'forecast' | 'recommend'; summary: string }
+  | { kind: 'phase-start'; startupId: string; startupName: string; phase: SimulationPhase }
+  | { kind: 'phase-done';  startupId: string; startupName: string; phase: SimulationPhase; summary: string }
   | { kind: 'startup-done'; startupId: string; startupName: string; endUsers: number; totalRevenueUSD: number };
 
 export async function runSimulation(
@@ -257,14 +289,19 @@ export async function runSimulation(
       emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'forecast',
         summary: `13-month forecast: ${endUsers.toLocaleString()} users by May'27, $${totalRevenueUSD.toLocaleString()} year revenue` });
 
+      emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'narrative' });
+      const events = await llm.narrativeSeries({ startup, monthly, userReview, marketReview });
+      emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'narrative',
+        summary: `${events.length} monthly events with causes attached` });
+
       emit({ kind: 'phase-start', startupId: sid, startupName: sname, phase: 'recommend' });
-      const recommendation = await llm.recommend({ startup, userReview, marketReview });
+      const recommendation = await llm.recommend({ startup, userReview, marketReview, events });
       emit({ kind: 'phase-done', startupId: sid, startupName: sname, phase: 'recommend',
-        summary: 'founder recommendation ready' });
+        summary: 'founder recommendation ready (uses monthly causes)' });
 
       emit({ kind: 'startup-done', startupId: sid, startupName: sname, endUsers, totalRevenueUSD });
 
-      return { startupId: sid, startupName: sname, monthly, endUsers, totalRevenueUSD, userReview, marketReview, recommendation };
+      return { startupId: sid, startupName: sname, monthly, endUsers, totalRevenueUSD, userReview, marketReview, recommendation, events };
     }),
   );
 

@@ -10,7 +10,7 @@
  * the key isn't exposed to the user's browser inspector.
  */
 
-import type { LlmPort, MonthlyPoint, UserReview, MarketReview } from '@/domain/simulation';
+import type { LlmPort, MonthlyEvent, MonthlyPoint, UserReview, MarketReview } from '@/domain/simulation';
 import type { PersonaId, Startup } from '@/domain/types';
 
 const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
@@ -280,8 +280,11 @@ Project monthly users + monthly USD revenue for the startup, month by month, for
   }
 
   async recommend({
-    startup, userReview, marketReview,
-  }: { startup: Startup; userReview: UserReview; marketReview: MarketReview }): Promise<string> {
+    startup, userReview, marketReview, events,
+  }: { startup: Startup; userReview: UserReview; marketReview: MarketReview; events: MonthlyEvent[] }): Promise<string> {
+    const eventsBlock = events.length
+      ? events.map((e) => `- ${e.month}: ${e.event}`).join('\n')
+      : '(none)';
     const prompt = `# Task
 You are an experienced advisor giving the founder of an early-stage startup a substantive, non-generic, prioritised recommendation for the next 90 days.
 
@@ -299,17 +302,74 @@ ${startup.description ?? '(none)'}
 - Market score: ${marketReview.score}/100. Notes: ${marketReview.notes}
 - Top trend signals: ${marketReview.trends.slice(0, 4).map((t) => `${t.label} (${t.impact >= 0 ? '+' : ''}${Math.round(t.impact * 100)}%)`).join(', ') || '—'}
 
+# Month-by-month narrative (with causes)
+${eventsBlock}
+
 # What I want
 A real recommendation — not a fortune cookie. Structure it as 4-7 sentences that:
 1. Open with the single most important call (double down / pivot wedge / cut scope / kill / change ICP / etc.).
-2. Reference at least one specific finding from the user OR market review by name (objection, ICP mismatch, named substitute, tailwind, etc.) — show you read the analysis.
+2. Reference at least one SPECIFIC cause from the monthly narrative above by name (the dip in <month>, the spike caused by <event>, the regulation in <month>, etc.) — show you read the timeline.
 3. List 2-3 concrete actions for the next 30/60/90 days. Specific actions, not "improve onboarding". Examples of specific: "ship a 60-second-to-first-value demo flow", "publish a benchmark vs <named substitute>", "narrow ICP to <specific segment> and rewrite landing accordingly".
 4. End with the one metric the founder should monitor weekly to know if the call is working.
 
 # Output JSON schema
 { "recommendation": "<4-7 sentence concrete advice>" }`;
-    const out = await this.chat<{ recommendation: string }>(prompt, { max_tokens: 700 });
-    return String(out.recommendation ?? '').slice(0, 1600);
+    const out = await this.chat<{ recommendation: string }>(prompt, { max_tokens: 900 });
+    return String(out.recommendation ?? '').slice(0, 1800);
+  }
+
+  async narrativeSeries({
+    startup, monthly, userReview, marketReview,
+  }: { startup: Startup; monthly: MonthlyPoint[]; userReview: UserReview; marketReview: MarketReview }): Promise<MonthlyEvent[]> {
+    const seriesBlock = monthly
+      .map((p) => `- ${p.month}: ${p.users.toLocaleString()} users, $${p.revenueUSD.toLocaleString()} revenue`)
+      .join('\n');
+    const trendBlock = marketReview.trends.length
+      ? marketReview.trends.slice(0, 4).map((t) => `${t.label} (${t.impact >= 0 ? '+' : ''}${Math.round(t.impact * 100)}%)`).join(', ')
+      : 'none';
+    const prompt = `# Task
+Write a 13-month news ticker for a startup, May 2026 → May 2027. ONE short event per month that explains WHAT happened AND a "because" cause — those causes will be used by another model to write a 30/60/90 founder recommendation, so make each cause concrete and actionable.
+
+# Startup
+- Name: ${startup.name}
+- Pitch: ${startup.pitch}
+- Category: ${startup.category}
+- Hashtags: ${startup.hashtags.map((h) => '#' + h).join(' ')}
+- Description:
+"""
+${startup.description ?? '(none)'}
+"""
+
+# Already-projected forecast (events MUST be consistent with the curve)
+${seriesBlock}
+
+# Findings
+- User panel score: ${userReview.score}/100. Notes: ${userReview.notes}
+- Market score: ${marketReview.score}/100. Notes: ${marketReview.notes}
+- Trend signals: ${trendBlock}
+
+# Rules
+- One event per month. 15-30 words. Pattern: "<what happened in plain English> because <plausible cause>."
+- The cause should be specific: a product action (shipped X, pivoted Y), a world / segment event (regulation, OpenAI model release, competitor launch, viral post, funding round), or a user feedback signal.
+- Match the tone to the user/market scores and the curve shape: a forecast dip MUST be reflected by a negative cause (churn, regression, segment cooled), a steep climb by a positive cause.
+- Use 2-3 different real-feeling product actions across the year (no repeated "shipped onboarding fix" every month).
+- Reference at least 2 distinct external/world signals across the 13 months (e.g. "OpenAI released gpt-5", "EU AI Act enforcement began", "Telegram blocked third-party bots in <country>").
+- Do not exceed 200 chars per event.
+
+# Output JSON schema
+{
+  "monthly": [
+    { "month": "${monthly[0]?.month ?? '2026-05'}", "event": "<15-30 word event with 'because'>" },
+    ... ${monthly.length} entries, one per month, in the same order
+  ]
+}`;
+    const out = await this.chat<{ monthly: MonthlyEvent[] }>(prompt, { max_tokens: 2200, temperature: 0.6 });
+    const arr = Array.isArray(out.monthly) ? out.monthly : [];
+    // Pad/trim to match months exactly so the renderer can index safely.
+    return monthly.map((p, i) => {
+      const r = arr[i];
+      return { month: p.month, event: String(r?.event ?? '').slice(0, 220) || `${startup.name}: month ${i + 1} — no narrative returned.` };
+    });
   }
 }
 

@@ -132,7 +132,8 @@ export function Leaderboard() {
           user:      `🎯 ${e.startupName} walks into a room of 5 ICP personas — first impressions in progress…`,
           market:    `🔍 ${e.startupName}: scanning the live market (web_search) for trends, incumbents, regulation…`,
           forecast:  `📈 ${e.startupName}: drafting a 13-month users + revenue curve…`,
-          recommend: `🧭 ${e.startupName}: advisor is drafting a 30/60/90 plan…`,
+          narrative: `📰 ${e.startupName}: composing the 13-month news ticker (causes that feed the advice)…`,
+          recommend: `🧭 ${e.startupName}: advisor is drafting a 30/60/90 plan from the narrative…`,
         };
         logActivity(start[e.phase] ?? `▶ ${e.startupName} · ${e.phase}`);
       } else if (e.kind === 'phase-done') {
@@ -140,7 +141,8 @@ export function Leaderboard() {
           user:      `💡 ${e.startupName}: panel verdict — ${e.summary}`,
           market:    `📰 ${e.startupName}: market read — ${e.summary}`,
           forecast:  `🚀 ${e.startupName}: forecast lands — ${e.summary}`,
-          recommend: `📝 ${e.startupName}: founder advice ready`,
+          narrative: `📜 ${e.startupName}: ${e.summary}`,
+          recommend: `📝 ${e.startupName}: ${e.summary}`,
         };
         logActivity(done[e.phase] ?? `  ${e.startupName} · ${e.phase}: ${e.summary}`);
       } else if (e.kind === 'startup-done') {
@@ -183,18 +185,24 @@ export function Leaderboard() {
         const prev = i > 1 ? f.monthly[i - 2]! : { users: 0, revenueUSD: 0 } as { users: number; revenueUSD: number };
         const du = cur.users - prev.users;
         const dr = cur.revenueUSD - prev.revenueUSD;
-        const milestone =
-          i === 1                                  ? '🚀 launched MVP' :
-          (prev.users <  100   && cur.users >=  100)   ? '⭐ crossed 100 users' :
-          (prev.users <  500   && cur.users >=  500)   ? '🌟 crossed 500 users' :
-          (prev.users < 1000   && cur.users >= 1000)   ? '🌠 crossed 1k users' :
-          (prev.revenueUSD < 1000   && cur.revenueUSD >= 1000)   ? '💵 first $1k month' :
-          (prev.revenueUSD < 10000  && cur.revenueUSD >= 10000)  ? '💰 first $10k month' :
-          (du < 0)                                 ? '📉 dipped this month' :
-          (prev.users > 0 && du / prev.users > 0.3) ? '📈 strong growth' :
-          null;
-        const head = milestone ?? '·';
-        logActivity(`  ${head} ${f.startupName}: ${cur.users.toLocaleString()} users (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`);
+        // The LLM-generated narrative event for this month (with a `because`
+        // cause that gets re-used by the recommendation prompt).
+        const ev = f.events?.find((x) => x.month === ym);
+        const head =
+          i === 1 ? '🚀' :
+          (du < 0) ? '📉' :
+          (prev.users < 100 && cur.users >= 100)   ? '⭐' :
+          (prev.users < 500 && cur.users >= 500)   ? '🌟' :
+          (prev.users < 1000 && cur.users >= 1000) ? '🌠' :
+          (prev.users > 0 && du / prev.users > 0.3) ? '📈' :
+          '·';
+        const numbers = `${cur.users.toLocaleString()} users (${du >= 0 ? '+' : ''}${du.toLocaleString()}) · $${cur.revenueUSD.toLocaleString()} (${dr >= 0 ? '+' : ''}$${dr.toLocaleString()})`;
+        if (ev?.event) {
+          logActivity(`  ${head} ${ev.event}`);
+          logActivity(`     ${numbers}`);
+        } else {
+          logActivity(`  ${head} ${f.startupName}: ${numbers}`);
+        }
       }
 
       await sleep(MS_PER_MONTH);
