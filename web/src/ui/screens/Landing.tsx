@@ -168,19 +168,29 @@ function PitchMediaTile({ kind, href, accent }: { kind: 'pdf' | 'video'; href: s
 
 // ---------- shared visual atoms ----------
 
-function CoverArea({ name, height, badge }: { name: string; height: number; badge?: React.ReactNode }) {
+function CoverArea({ name, height, badge, image }: { name: string; height: number; badge?: React.ReactNode; image?: string }) {
   const cover = coverFor(name);
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ height, background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+      style={{ height, background: image ? undefined : `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
     >
-      <div
-        className="absolute -bottom-10 -left-4 select-none font-display font-extrabold leading-none text-ink/25"
-        style={{ fontSize: Math.round(height * 0.95) }}
-      >
-        {name.slice(0, 1)}
-      </div>
+      {image ? (
+        <img
+          src={image}
+          alt={name}
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          draggable={false}
+        />
+      ) : (
+        <div
+          className="absolute -bottom-10 -left-4 select-none font-display font-extrabold leading-none text-ink/25"
+          style={{ fontSize: Math.round(height * 0.95) }}
+        >
+          {name.slice(0, 1)}
+        </div>
+      )}
       {badge ? <div className="absolute top-4 left-4 z-10">{badge}</div> : null}
     </div>
   );
@@ -223,14 +233,24 @@ function FeaturedCard({
     >
       <div
         className="relative h-[380px] w-full"
-        style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+        style={{ background: startup.coverImage ? undefined : `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
       >
-        <div
-          className="pointer-events-none absolute -bottom-12 -left-6 select-none font-display font-extrabold leading-none text-ink/20"
-          style={{ fontSize: 360 }}
-        >
-          {startup.name.slice(0, 1)}
-        </div>
+        {startup.coverImage ? (
+          <img
+            src={startup.coverImage}
+            alt={startup.name}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+            draggable={false}
+          />
+        ) : (
+          <div
+            className="pointer-events-none absolute -bottom-12 -left-6 select-none font-display font-extrabold leading-none text-ink/20"
+            style={{ fontSize: 360 }}
+          >
+            {startup.name.slice(0, 1)}
+          </div>
+        )}
 
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
         <div className="pointer-events-none absolute inset-0 [background:radial-gradient(120%_70%_at_50%_30%,transparent_40%,rgba(0,0,0,0.55)_100%)]" />
@@ -355,7 +375,7 @@ function ListCard({
   return (
     <article className="bento overflow-hidden">
       <button onClick={onOpen} className="block w-full text-left" aria-label={`Open ${startup.name}`}>
-        <CoverArea name={startup.name} height={300} />
+        <CoverArea name={startup.name} height={300} image={startup.coverImage} />
       </button>
 
       <div className="p-7">
@@ -554,11 +574,24 @@ function DetailDialog({
         className="bento relative w-full max-w-3xl max-h-[90vh] overflow-y-auto p-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative h-60 w-full" style={{ background: `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}>
-          <div className="absolute -left-6 -bottom-10 select-none font-display text-[260px] font-extrabold leading-none text-ink/25">
-            {startup.name.slice(0, 1)}
-          </div>
-          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 rounded-full bg-base/80 p-2 text-white hover:bg-base">
+        <div
+          className="relative h-60 w-full"
+          style={{ background: startup.coverImage ? undefined : `linear-gradient(135deg, ${cover.from}, ${cover.to})` }}
+        >
+          {startup.coverImage ? (
+            <img
+              src={startup.coverImage}
+              alt={startup.name}
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="lazy"
+              draggable={false}
+            />
+          ) : (
+            <div className="absolute -left-6 -bottom-10 select-none font-display text-[260px] font-extrabold leading-none text-ink/25">
+              {startup.name.slice(0, 1)}
+            </div>
+          )}
+          <button onClick={onClose} aria-label="Close" className="absolute top-3 right-3 rounded-full bg-base/80 p-2 text-white hover:bg-base z-10">
             <XIcon size={14} />
           </button>
         </div>

@@ -123,6 +123,8 @@ export interface Startup {
   landingUrl?: string;
   hashtags: string[];
   repo?: string; // owner/repo
+  /** Optional public URL for the card / dialog cover image. */
+  coverImage?: string;
   published: boolean;
   createdAt: number;
   // Auxiliary metrics that are not derivable purely from spec:
