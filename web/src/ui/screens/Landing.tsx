@@ -257,7 +257,7 @@ function FeaturedCarousel({
 
   return (
     <section
-      className="mx-auto mt-6 max-w-3xl px-6"
+      className="mx-auto mt-6 max-w-5xl px-6"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -283,20 +283,20 @@ function FeaturedCarousel({
           }
         />
 
-        {/* Plain chevrons outside the card edges. No bg, no border. */}
+        {/* Plain chevrons further out from the card edges. No bg, no border. */}
         <button
           onClick={() => setIndex((i) => (i - 1 + total) % total)}
           aria-label="Previous"
-          className="absolute -left-12 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
+          className="absolute -left-20 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
         >
-          <ChevronLeftIcon size={36} />
+          <ChevronLeftIcon size={40} />
         </button>
         <button
           onClick={() => setIndex((i) => (i + 1) % total)}
           aria-label="Next"
-          className="absolute -right-12 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
+          className="absolute -right-20 top-1/2 -translate-y-1/2 text-textsec transition hover:text-neon-500"
         >
-          <ChevronRightIcon size={36} />
+          <ChevronRightIcon size={40} />
         </button>
       </div>
     </section>
@@ -412,6 +412,9 @@ function HashtagBar({
 // ---------- detail dialog ----------
 
 function fmtUSD(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (abs >= 1_000) return '$' + Math.round(n / 1000) + 'k';
   return '$' + n.toLocaleString('en-US');
 }
 
@@ -853,7 +856,7 @@ export function Landing() {
         onOpen={openById}
       />
 
-      <main className="mx-auto max-w-3xl px-6 pb-16 pt-10">
+      <main className="mx-auto max-w-5xl px-6 pb-16 pt-10">
         <ul className="flex flex-col gap-6">
           {list.map(({ startup }) => (
             <li key={startup.id}>

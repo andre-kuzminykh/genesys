@@ -41,7 +41,7 @@ describe('TEST-GEN-190 — wallet + invest UI', () => {
     bootstrapSession('andre-kuzminykh');
     renderLanding();
     // After seed, no investments by bob yet → wallet should be the full default.
-    expect(screen.getByText('$100,000')).toBeInTheDocument();
+    expect(screen.getByText('$100k')).toBeInTheDocument();
   });
 
   it('opening a card shows the Invest button; clicking it reveals the amount form', async () => {

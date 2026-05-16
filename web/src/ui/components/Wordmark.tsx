@@ -2,18 +2,20 @@ import { useState } from 'react';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-const SIZES: Record<Size, { font: number; gap: number; cursorW: number; cursorH: number; cursorMb: number }> = {
-  sm: { font: 18, gap: 6,  cursorW: 6,  cursorH: 2, cursorMb: 4 },
-  md: { font: 26, gap: 8,  cursorW: 8,  cursorH: 3, cursorMb: 5 },
-  lg: { font: 42, gap: 10, cursorW: 12, cursorH: 4, cursorMb: 8 },
-  xl: { font: 96, gap: 14, cursorW: 18, cursorH: 5, cursorMb: 16 },
+const SIZES: Record<Size, { font: number; cursorW: number; cursorH: number; cursorBottom: number; pl: number }> = {
+  sm: { font: 18, cursorW: 6,  cursorH: 2, cursorBottom: 2,  pl: 12 },
+  md: { font: 26, cursorW: 8,  cursorH: 3, cursorBottom: 3,  pl: 16 },
+  lg: { font: 42, cursorW: 12, cursorH: 4, cursorBottom: 5,  pl: 22 },
+  xl: { font: 96, cursorW: 18, cursorH: 5, cursorBottom: 10, pl: 32 },
 };
 
 /**
- * Brand wordmark.
+ * Brand wordmark: blinking neon "_" cursor positioned absolutely in front of
+ * the wordmark (image when /wordmark.png is present, CSS-rendered Outfit 900
+ * fallback otherwise).
  *
- * Layout: blinking neon "_" cursor → wordmark (image or CSS fallback).
- * Prefer /wordmark.png; if it 404s, falls back to a CSS-rendered Outfit 900 word.
+ * Absolute-positioning the cursor avoids the inline-flex baseline issue we hit
+ * when the wordmark image and the cursor have very different intrinsic heights.
  */
 export function Wordmark({
   size = 'md',
@@ -30,26 +32,24 @@ export function Wordmark({
   const [imgOk, setImgOk] = useState(true);
   const targetHeight = Math.round(s.font * 1.15);
 
-  const Cursor = withCursor ? (
-    <span
-      className={`block rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
-      style={{
-        width: s.cursorW,
-        height: s.cursorH,
-        marginBottom: s.cursorMb,
-        boxShadow: '0 0 16px rgba(127,255,0,0.55)',
-      }}
-      aria-hidden
-    />
-  ) : null;
-
   return (
-    <div
-      className={`inline-flex items-end font-brand lowercase leading-none ${className}`}
-      style={{ gap: s.gap, fontSize: s.font }}
+    <span
+      className={`relative inline-block font-brand lowercase leading-none ${className}`}
+      style={{ paddingLeft: withCursor ? s.pl : 0 }}
       aria-label="Genesys"
     >
-      {Cursor}
+      {withCursor ? (
+        <span
+          className={`absolute left-0 rounded-sm bg-neon-500 ${blink ? 'animate-cursorBlink' : ''}`}
+          style={{
+            width: s.cursorW,
+            height: s.cursorH,
+            bottom: s.cursorBottom,
+            boxShadow: '0 0 14px rgba(127,255,0,0.55)',
+          }}
+          aria-hidden
+        />
+      ) : null}
       {imgOk ? (
         <img
           src="/wordmark.png"
@@ -59,13 +59,13 @@ export function Wordmark({
         />
       ) : (
         <span
-          className="text-softblue"
-          style={{ fontWeight: 900, letterSpacing: '-0.05em' }}
+          className="block text-softblue"
+          style={{ fontSize: s.font, fontWeight: 900, letterSpacing: '-0.05em' }}
         >
           genesys
         </span>
       )}
-    </div>
+    </span>
   );
 }
 
