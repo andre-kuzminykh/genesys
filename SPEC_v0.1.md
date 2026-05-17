@@ -1376,7 +1376,245 @@ DFD for one upvote click:
 
 ---
 
-## 17. Shared backend state — upvotes & investments persisted on the server (added 2026-05-16)
+## 19. FEAT-GEN-060 — Build wizard (product spec from scratch, methodology-driven) (added 2026-05-17)
+
+### 19.1 Feature
+
+- **Feature ID**: FEAT-GEN-060
+- **Name**: Build wizard
+- **One-liner**: A founder lands on `/build`, walks through a strict sequential
+  methodology (product → features → deep-dive → architecture → tests → tasks)
+  and ends with a structured spec they can ship to engineering. Magic-wand
+  LLM assist on every field fills suggestions from the prior context.
+
+### 19.2 User stories
+
+- **US-GEN-060-A** — As a founder I want to start a fresh product brief with
+  prompts for user / problem / solution / metrics so I never face a blank
+  page.
+- **US-GEN-060-B** — As a founder I want the wand to suggest 4-6 features
+  based on what I've already typed so I don't anchor on the first feature
+  I think of.
+- **US-GEN-060-C** — As a founder I want to pick ONE feature and only see
+  the deep-dive for that one, so I'm forced to think sequentially.
+- **US-GEN-060-D** — As a founder I want my draft auto-saved so I can
+  close the tab and come back later without losing anything.
+- **US-GEN-060-E** — As a founder I want any wand failure (no key, network,
+  bad JSON) surfaced inline so I know whether to retry or wait.
+
+### 19.3 User flow
+
+1. Open `/build`. Page shows three step shells; only step 1 is unlocked.
+2. Fill "user / problem / solution"; hit the wand on any field → POST
+   `/api/llm/chat`, receive `{ user }` (or other), apply to the field.
+3. Add 1-3 metrics; wand on the metrics row replaces the list with 3
+   LLM suggestions.
+4. Step 1 done → step shell border turns neon, step 2 unlocks.
+5. In step 2 either add features manually OR hit the wand → 4-6 LLM
+   features appended (must/should/could).
+6. Pick ONE feature to deep-dive → its row gets a neon border and the
+   row caption flips to "✓ Working on this".
+7. Step 3 unlocks (still a placeholder shell in the current iteration —
+   subsequent commits land the user-story → flow → BDD → FR/NFR pass).
+8. Draft is persisted to `localStorage` under
+   `genesys:build-draft:v1` after every state change.
+
+### 19.4 Use cases — Gherkin BDD
+
+#### UC-GEN-060-1 — Magic-wand suggests a field
+
+```gherkin
+Feature: Build wizard magic-wand assist
+  Scenario: Founder asks the wand to suggest the "user" field
+    Given I have filled "problem" and "solution" but the "user" field is empty
+    When I click the magic-wand button next to "Who is the user?"
+    Then POST /api/llm/chat is called with a JSON-only system prompt and the partial brief
+      And the server returns 200 with { choices:[{ message:{ content: '{"user":"<one sentence>"}' }}] }
+      And the "user" field is populated with that sentence
+      And no other field is mutated
+```
+
+#### UC-GEN-060-2 — Sequential gating
+
+```gherkin
+  Scenario: Step 2 stays locked until step 1 is complete
+    Given the "user", "problem" or "solution" field is empty
+    Then the Feature roadmap section MUST be rendered with `opacity-50 pointer-events-none`
+    When all three step-1 fields are non-empty
+    Then the Feature roadmap section MUST be interactive
+```
+
+#### UC-GEN-060-3 — Draft persistence
+
+```gherkin
+  Scenario: Draft survives a page reload
+    Given I have filled the product foundation and added 3 features
+    When I reload the page (or close + reopen the tab)
+    Then the form fields and feature rows MUST reappear exactly as I left them
+      And the previously-picked workingFeatureId MUST still show "✓ Working on this"
+```
+
+#### UC-GEN-060-4 — Wand failure surfaces an actionable error
+
+```gherkin
+  Scenario: OpenAI key is missing on the server
+    Given the server has no OPENAI_API_KEY in env
+    When I click any magic-wand button
+    Then POST /api/llm/chat responds 503 with { error: "NO_OPENAI_KEY" }
+      And a red banner appears above the steps reading
+      "OpenAI key not configured on the server (/opt/genesis/.env)."
+      And the affected field stays unchanged
+```
+
+#### UC-GEN-060-5 — Pick one feature to deep-dive
+
+```gherkin
+  Scenario: Founder picks a feature for the deep-dive
+    Given step 2 has at least one feature row
+    When I click "Pick to deep-dive →" on a feature row
+    Then draft.workingFeatureId MUST equal that row's id
+      And only that row renders with the neon border
+      And step 3's title MUST include the feature's name
+```
+
+### 19.5 Functional requirements
+
+| FR ID | Requirement | Test |
+|---|---|---|
+| FR-GEN-601 | Magic-wand calls MUST go through same-origin `POST /api/llm/chat`; the OpenAI key is never read from `import.meta.env` in this path. | TEST-GEN-601-C |
+| FR-GEN-602 | The proxy MUST return 503 `NO_OPENAI_KEY` when no key is configured server-side. | TEST-GEN-602-S |
+| FR-GEN-603 | `loadDraft()` MUST tolerate a missing / corrupt localStorage entry and return the empty draft without throwing. | TEST-GEN-603-D |
+| FR-GEN-604 | `saveDraft(d)` MUST persist the draft under `genesys:build-draft:v1` and stamp `updatedAt` with `Date.now()`. | TEST-GEN-604-D |
+| FR-GEN-605 | Step 2 MUST be rendered as `pointer-events-none opacity-50` until step 1 is complete. | TEST-GEN-605-C |
+| FR-GEN-606 | The magic-wand button MUST have no visible border / background — only a glyph that recolours on hover. | TEST-GEN-606-C |
+| FR-GEN-607 | `suggestFeatures(brief)` MUST clamp the output to ≤ 8 entries and normalise `priority` to one of `must / should / could`, defaulting unknown values to `should`. | TEST-GEN-607-C |
+| FR-GEN-608 | Each wand call surfaces an inline red banner with the human-readable error code when it fails; the field stays unchanged. | (manual) |
+
+### 19.6 Non-functional requirements
+
+| NFR ID | Category | Requirement | Test |
+|---|---|---|---|
+| NFR-GEN-601 | Performance | Magic-wand round-trip (click → field populated) MUST land in < 3 s p95 for a single-field suggest. | (manual) |
+| NFR-GEN-602 | Security | OpenAI key MUST NOT appear in any JS bundle for the Build wizard path. | (code review) |
+| NFR-GEN-603 | Privacy | The brief content travels to OpenAI; users are notified of this via the cookie banner / Privacy page. | (manual) |
+| NFR-GEN-604 | Accessibility | The magic-wand button MUST have an `aria-label` describing the action, a tooltip via `title`, and reflect busy state visibly (spinner). | TEST-GEN-606-C |
+| NFR-GEN-605 | Resilience | A bad JSON response from OpenAI MUST surface `BAD_JSON` and NOT corrupt the in-memory or persisted draft. | TEST-GEN-605-D (manual + parser) |
+
+### 19.7 Tests by layer
+
+| Test ID | Layer | What it covers | File |
+|---|---|---|---|
+| TEST-GEN-601-C | Client (component) | Magic-wand calls `/api/llm/chat` with the right shape; populates the target field on success | `web/src/ai/__tests__/buildAssist.test.ts` |
+| TEST-GEN-602-S | Service (backend) | `/api/llm/chat` returns 503 `NO_OPENAI_KEY` when env is empty | `server/state.test.js` |
+| TEST-GEN-603-D | Data | `loadDraft()` returns `EMPTY_DRAFT` for missing / corrupt storage | `web/src/data/__tests__/buildDraft.test.ts` |
+| TEST-GEN-604-D | Data | `saveDraft()` → `loadDraft()` round-trips every field + stamps `updatedAt` | `web/src/data/__tests__/buildDraft.test.ts` |
+| TEST-GEN-605-C | Client | Step 2 shell carries `pointer-events-none opacity-50` while step 1 is empty | `web/src/ui/screens/__tests__/Build.test.tsx` |
+| TEST-GEN-606-C | Client | Magic-wand has `aria-label`, no `border-*` / `bg-*` chrome classes | `web/src/ui/screens/__tests__/Build.test.tsx` |
+| TEST-GEN-607-C | Client | `suggestFeatures` clamps to ≤ 8 + normalises priority | `web/src/ai/__tests__/buildAssist.test.ts` |
+
+### 19.8 Component map
+
+| Layer | File | Role |
+|---|---|---|
+| Client | `web/src/ui/screens/Build.tsx` | Sequential wizard. Owns the in-memory `BuildDraft`, mounts step shells, fires wand callbacks. |
+| Client | `web/src/ui/components/MagicWand.tsx` | Chrome-less sparkle button + spinner + a11y labels. |
+| Client | `web/src/ai/buildAssist.ts` | Typed wand helpers. Wraps `POST /api/llm/chat`, JSON-parses, raises `BuildAssistError`. |
+| Data | `web/src/data/buildDraft.ts` | `EMPTY_DRAFT`, `loadDraft`, `saveDraft`, `randomId`. localStorage backed (`genesys:build-draft:v1`). |
+| Service | `server/index.js` (route `/api/llm/chat`) | Same-origin proxy to OpenAI's chat.completions; server-held key; logs response code + duration. |
+| Infra | `web/nginx.conf` `location /api/` | `proxy_read_timeout 240s` so a slow LLM doesn't drop the request mid-suggest. |
+
+### 19.9 ERD slice
+
+```
+┌───────────────────────────┐
+│ BuildDraft (1 per browser)│
+│  product: ProductFoundation
+│  features: FeatureRow[]    
+│  workingFeatureId: string|null
+│  updatedAt: ms            │
+└───────────────────────────┘
+       │
+       ├── product : ProductFoundation { user, problem, solution, metrics[] }
+       │
+       └── features : FeatureRow[] { id, name, oneliner, priority }
+                          ▲
+                          │ pickToDeepDive → workingFeatureId
+```
+
+Persistence boundary: localStorage key `genesys:build-draft:v1`. No
+server-side mirror of this draft yet — the wizard is single-browser-local
+until the founder converts it into a real Startup.
+
+### 19.10 DFD — one magic-wand click
+
+```
+[Build.tsx]
+   click wand on field X
+        │
+        ├─ setBusy('X')
+        │
+        └─ buildAssist.suggestX(draft.product)
+              │
+              ▼
+            POST /api/llm/chat   (same-origin)
+              │
+              ▼
+           [nginx /api/*] → proxy_pass → [auth:3000]
+              │
+              ├─ env OPENAI_API_KEY ? else 503 NO_OPENAI_KEY
+              │
+              ├─ fetch https://api.openai.com/v1/chat/completions  (server-side key)
+              │
+              └─ pass status + JSON back
+              │
+              ▼
+          JSON.parse(message.content) → { X: "..." }
+              │
+              ▼
+   setState((d) => apply suggestion to d.product.X)
+   saveDraft(d) → localStorage
+```
+
+### 19.11 Project tree slice (Build feature)
+
+```
+genesys/
+├── server/
+│   └── index.js                         POST /api/llm/chat handler
+├── web/
+│   ├── public/                           — (no static assets specific to /build)
+│   ├── src/
+│   │   ├── ai/
+│   │   │   └── buildAssist.ts            wand helpers (suggestUser / Problem / Solution / Metrics / Features)
+│   │   ├── data/
+│   │   │   └── buildDraft.ts             localStorage draft
+│   │   ├── ui/
+│   │   │   ├── components/
+│   │   │   │   └── MagicWand.tsx         chrome-less sparkle button
+│   │   │   └── screens/
+│   │   │       └── Build.tsx             wizard screen
+│   │   └── main.tsx                      registers /build route
+└── SPEC_v0.1.md                          §19 (this section)
+```
+
+### 19.12 Roadmap (subsequent iterations)
+
+- **§19.13 — User-story → flow → BDD pass** (step 3 deep-dive)
+- **§19.14 — Architecture (UX / AI services + prompts / backend / ERD-DFD / infra / project tree)**
+- **§19.15 — Test matrix per FR/NFR with auto-IDs**
+- **§19.16 — Task decomposition + accept-criteria checklist + code-gen handoff**
+- **§19.17 — Export-to-SPEC.md and the Repository materialisation step**
+
+### 19.13 Traceability matrix
+
+| Feature | User Story | Use Case | FR | NFR | Test | Code |
+|---|---|---|---|---|---|---|
+| FEAT-GEN-060 | US-GEN-060-A | UC-GEN-060-1 | FR-GEN-601 | NFR-GEN-601, NFR-GEN-604 | TEST-GEN-601-C, TEST-GEN-606-C | `Build.tsx`, `MagicWand.tsx`, `buildAssist.ts`, `server/index.js` |
+| FEAT-GEN-060 | US-GEN-060-B | UC-GEN-060-1 | FR-GEN-607 | NFR-GEN-601 | TEST-GEN-601-C, TEST-GEN-607-C | `buildAssist.ts`, `Build.tsx` |
+| FEAT-GEN-060 | US-GEN-060-C | UC-GEN-060-5, UC-GEN-060-2 | FR-GEN-605 | — | TEST-GEN-605-C | `Build.tsx` |
+| FEAT-GEN-060 | US-GEN-060-D | UC-GEN-060-3 | FR-GEN-603, FR-GEN-604 | NFR-GEN-605 | TEST-GEN-603-D, TEST-GEN-604-D | `buildDraft.ts` |
+| FEAT-GEN-060 | US-GEN-060-E | UC-GEN-060-4 | FR-GEN-602, FR-GEN-608 | NFR-GEN-602 | TEST-GEN-602-S | `server/index.js`, `Build.tsx` |
+
 
 ### 17.1 Why
 

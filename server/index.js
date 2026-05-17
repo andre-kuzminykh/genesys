@@ -351,4 +351,4 @@ if (process.argv[1] && process.argv[1].endsWith('index.js')) {
 }
 
 // Exported for tests
-export { app, state, loadState, persistState, ALLOWLIST, STARTUP_OWNERS, CREDITS_PER_INVESTOR };
+export { app, state, loadState, persistState, ALLOWLIST, STARTUP_OWNERS, CREDITS_PER_INVESTOR, OPENAI_API_KEY };

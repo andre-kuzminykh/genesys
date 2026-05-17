@@ -58,7 +58,7 @@ export function loadDraft(): BuildDraft {
         priority: (f.priority === 'must' || f.priority === 'should' || f.priority === 'could') ? f.priority : 'should',
       })) : [],
       workingFeatureId: typeof parsed?.workingFeatureId === 'string' ? parsed.workingFeatureId : null,
-      updatedAt: Number(parsed?.updatedAt ?? 0),
+      updatedAt: Number.isFinite(Number(parsed?.updatedAt)) ? Number(parsed?.updatedAt) : 0,
     };
   } catch {
     return { ...EMPTY_DRAFT };
