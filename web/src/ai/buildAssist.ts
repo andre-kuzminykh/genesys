@@ -103,7 +103,40 @@ Return JSON: { "metrics": ["<m1>", "<m2>", "<m3>"] }`, 600);
   return Array.isArray(r.metrics) ? r.metrics.slice(0, 5).map(String) : [];
 }
 
-// ---- Step 2: Feature backlog ------------------------------------------------
+// ---- Cover image generation -------------------------------------------------
+
+/**
+ * Generates a cover image for the product brief via OpenAI's image endpoint.
+ * Returns a `data:image/png;base64,…` URL suitable for `<img src>` and for
+ * storing inline in the localStorage draft.
+ */
+export async function generateCoverImage(p: ProductSeed): Promise<string> {
+  const prompt = [
+    `Editorial cover illustration for an early-stage AI startup card.`,
+    `Subject: ${p.solution || 'an AI productivity tool'} for ${p.user || 'modern professionals'}.`,
+    `Problem it solves: ${p.problem || '(unspecified pain)'}.`,
+    `Style: dark navy background with neon-green and soft-blue accents.`,
+    `Editorial, minimal, symbolic. No text or logos. No human faces. Modern, clean.`,
+  ].join(' ');
+
+  const res = await fetch('/api/llm/image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, size: '1024x1024', n: 1, response_format: 'b64_json' }),
+  });
+  if (!res.ok) {
+    if (res.status === 503) throw new BuildAssistError('NO_KEY', 'OpenAI key not configured on the server.');
+    let msg = `image ${res.status}`;
+    try { const j = await res.json(); msg = j?.error?.message ?? j?.error ?? msg; } catch {/* ignore */}
+    throw new BuildAssistError('API', msg);
+  }
+  const json = await res.json();
+  const b64 = json?.data?.[0]?.b64_json;
+  if (typeof b64 !== 'string' || b64.length === 0) {
+    throw new BuildAssistError('BAD_JSON', 'OpenAI returned no image bytes.');
+  }
+  return `data:image/png;base64,${b64}`;
+}
 
 export interface FeatureSuggestion {
   name: string;

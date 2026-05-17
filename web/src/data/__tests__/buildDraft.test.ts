@@ -38,7 +38,7 @@ describe('TEST-FR-BUILD-004-D — saveDraft round-trips + stamps updatedAt', () 
   it('round-trips every field through localStorage and stamps updatedAt', () => {
     const before = Date.now();
     const draft = {
-      product: { user: 'A', problem: 'B', solution: 'C', metrics: ['m1', 'm2'] },
+      product: { user: 'A', problem: 'B', solution: 'C', metrics: ['m1', 'm2'], coverImage: '' },
       features: [
         { id: randomId(), name: 'F1', oneliner: 'one', priority: 'must' as const },
         { id: randomId(), name: 'F2', oneliner: 'two', priority: 'should' as const },

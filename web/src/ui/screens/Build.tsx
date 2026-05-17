@@ -10,7 +10,7 @@ import {
   type BuildDraft, type FeaturePriority,
 } from '@/data/buildDraft';
 import {
-  BuildAssistError,
+  BuildAssistError, generateCoverImage,
   suggestFeatures, suggestMetrics, suggestProblem, suggestSolution, suggestUser,
 } from '@/ai/buildAssist';
 
@@ -108,23 +108,24 @@ export function Build() {
           />
 
           <div className="mt-5">
-            <div className="flex items-baseline justify-between">
-              <div className="font-display text-sm font-extrabold">Key metrics</div>
-              <MagicWand
-                busy={busy === 'metrics'}
-                onClick={() => wrapAssist('metrics', () => suggestMetrics(draft.product), (vs) => update((d) => ({ ...d, product: { ...d.product, metrics: vs.length ? vs : [''] } })))}
-                title="Suggest 3 metrics"
-              />
-            </div>
+            <label className="font-display text-sm font-extrabold">Key metrics</label>
             <div className="mt-2 space-y-2">
               {draft.product.metrics.map((m, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-2xl border border-surfaceLight bg-surface px-3 py-2">
+                <div key={i} className="relative flex items-center gap-2 rounded-2xl border border-surfaceLight bg-base px-4 py-2 focus-within:border-neon-500/60">
                   <input
                     value={m}
                     onChange={(e) => update((d) => ({ ...d, product: { ...d.product, metrics: d.product.metrics.map((x, j) => (j === i ? e.target.value : x)) } }))}
                     placeholder="Median time-to-first-value < 60 s"
-                    className="flex-1 bg-transparent outline-none text-sm placeholder:text-textsec"
+                    className="flex-1 bg-transparent outline-none text-sm placeholder:text-textsec pr-12"
                   />
+                  {i === 0 ? (
+                    <MagicWand
+                      busy={busy === 'metrics'}
+                      onClick={() => wrapAssist('metrics', () => suggestMetrics(draft.product), (vs) => update((d) => ({ ...d, product: { ...d.product, metrics: vs.length ? vs : [''] } })))}
+                      title="Suggest 3 metrics for this product"
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    />
+                  ) : null}
                   {draft.product.metrics.length > 1 ? (
                     <button
                       type="button"
@@ -142,6 +143,13 @@ export function Build() {
               >+ Add metric</button>
             </div>
           </div>
+
+          <CoverField
+            value={draft.product.coverImage ?? ''}
+            onChange={(v) => update((d) => ({ ...d, product: { ...d.product, coverImage: v } }))}
+            onGenerate={() => wrapAssist('cover', () => generateCoverImage(draft.product), (v) => update((d) => ({ ...d, product: { ...d.product, coverImage: v } })))}
+            generating={busy === 'cover'}
+          />
         </StepShell>
 
         {/* Step 2 — feature roadmap */}
@@ -252,6 +260,67 @@ export function Build() {
   );
 }
 
+function CoverField({ value, onChange, onGenerate, generating }: {
+  value: string;
+  onChange: (v: string) => void;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const onFile = (file: File | null) => {
+    if (!file) return;
+    if (file.size > 2_000_000) { alert('Image must be < 2 MB.'); return; }
+    const r = new FileReader();
+    r.onload = () => { if (typeof r.result === 'string') onChange(r.result); };
+    r.readAsDataURL(file);
+  };
+  return (
+    <div className="mt-5">
+      <label className="font-display text-sm font-extrabold">Cover image</label>
+      <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-[160px_1fr]">
+        <div
+          className="grid h-[160px] w-full place-items-center overflow-hidden rounded-2xl border border-surfaceLight bg-base"
+          aria-label="Cover preview"
+        >
+          {value ? (
+            <img src={value} alt="Cover preview" className="h-full w-full object-cover" draggable={false} />
+          ) : (
+            <span className="font-mono text-xs text-textsec">no image yet</span>
+          )}
+        </div>
+        <div className="flex flex-col justify-center gap-2">
+          <label className="cursor-pointer inline-flex items-center justify-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2 text-sm transition hover:border-neon-500/40 hover:text-neon-500">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            />
+            Upload image
+          </label>
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-neon-500 px-4 py-2 text-sm font-bold text-ink shadow-neon transition hover:bg-neon-400 disabled:opacity-60"
+          >
+            {generating ? (
+              <span aria-hidden className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-ink/30 border-t-ink" />
+            ) : null}
+            {generating ? 'Generating…' : 'Generate with AI'}
+          </button>
+          {value ? (
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="text-xs font-bold uppercase tracking-wider text-textsec hover:text-danger"
+            >Remove</button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StepShell({ index, title, done, locked = false, children }: {
   index: number; title: string; done: boolean; locked?: boolean; children: React.ReactNode;
 }) {
@@ -281,27 +350,29 @@ function FieldRow({
 }) {
   return (
     <div className="mt-5">
-      <div className="flex items-baseline justify-between">
-        <label className="font-display text-sm font-extrabold">{label}</label>
-        <MagicWand busy={!!busy} onClick={onWand} />
-      </div>
-      <div className="mt-2 rounded-2xl border border-surfaceLight bg-base focus-within:border-neon-500/60">
+      <label className="font-display text-sm font-extrabold">{label}</label>
+      <div className="relative mt-2 rounded-2xl border border-surfaceLight bg-base focus-within:border-neon-500/60">
         {multiline ? (
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             rows={3}
-            className="w-full resize-none bg-transparent px-4 py-3 text-sm outline-none placeholder:text-textsec"
+            className="w-full resize-none bg-transparent px-4 py-3 pr-11 text-sm outline-none placeholder:text-textsec"
           />
         ) : (
           <input
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-transparent px-4 py-3 text-sm outline-none placeholder:text-textsec"
+            className="w-full bg-transparent px-4 py-3 pr-11 text-sm outline-none placeholder:text-textsec"
           />
         )}
+        <MagicWand
+          busy={!!busy}
+          onClick={onWand}
+          className={`absolute right-3 ${multiline ? 'top-3' : 'top-1/2 -translate-y-1/2'}`}
+        />
       </div>
     </div>
   );

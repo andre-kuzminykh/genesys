@@ -10,6 +10,8 @@ export interface ProductFoundation {
   problem: string;
   solution: string;
   metrics: string[];
+  /** Cover artwork — uploaded data URL or generated via /api/llm/image. */
+  coverImage?: string;
 }
 
 export type FeaturePriority = 'must' | 'should' | 'could';
@@ -30,7 +32,7 @@ export interface BuildDraft {
 const KEY = 'genesys:build-draft:v1';
 
 export const EMPTY_DRAFT: BuildDraft = {
-  product: { user: '', problem: '', solution: '', metrics: [''] },
+  product: { user: '', problem: '', solution: '', metrics: [''], coverImage: '' },
   features: [],
   workingFeatureId: null,
   updatedAt: 0,
@@ -50,6 +52,7 @@ export function loadDraft(): BuildDraft {
         metrics:  Array.isArray(parsed?.product?.metrics) && parsed!.product!.metrics!.length
           ? parsed!.product!.metrics!.map(String)
           : [''],
+        coverImage: typeof parsed?.product?.coverImage === 'string' ? parsed!.product!.coverImage! : '',
       },
       features: Array.isArray(parsed?.features) ? parsed!.features!.map((f) => ({
         id: String(f.id ?? randomId()),

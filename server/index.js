@@ -140,6 +140,39 @@ app.get('/auth/health', (_req, res) => {
 // on /v1/chat/completions). We forward the same request body server-side and
 // return the response payload unchanged so the frontend can keep parsing it
 // the same way.
+// Image generation proxy — DALL-E. Returns the raw OpenAI payload (with
+// `data: [{ b64_json }]`). The frontend wraps b64_json into a data URL.
+app.post('/api/llm/image', async (req, res) => {
+  if (!OPENAI_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'NO_OPENAI_KEY' });
+  }
+  const payload = {
+    model: 'dall-e-3',
+    size: '1024x1024',
+    response_format: 'b64_json',
+    n: 1,
+    ...(req.body ?? {}),
+  };
+  const startTs = Date.now();
+  const tag = `[genesys-api] image ${payload.model}`;
+  try {
+    const r = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await r.json().catch(() => ({}));
+    console.log(`${tag} ← ${r.status} (${Date.now() - startTs} ms)`);
+    return res.status(r.status).json(json);
+  } catch (e) {
+    console.error(`${tag} FAILED:`, e?.message ?? e);
+    return res.status(502).json({ ok: false, error: 'PROXY_FAILED', message: String(e?.message ?? e) });
+  }
+});
+
 // Simple chat.completions passthrough — same security model as the Responses
 // proxy above, but for the cheap JSON chat path used by the Build wizard's
 // "magic wand" suggestions.

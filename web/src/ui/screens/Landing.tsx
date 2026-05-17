@@ -938,12 +938,11 @@ export function Landing() {
           <ThemeToggle />
           {myHandle ? (
             <Link
-              to="/onboarding/repo"
-              title={`Open your repositories — signed in as @${myHandle}`}
-              className="inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-signal-green/40 bg-signal-green/10 px-4 font-display text-sm font-bold text-signal-green transition hover:bg-signal-green/15"
+              to="/build"
+              title={`Start a new product — signed in as @${myHandle}`}
+              className="neon-button shrink-0"
             >
-              <span className="inline-flex h-2 w-2 rounded-full bg-signal-green animate-pulseGlow shadow-[0_0_8px_rgba(94,230,168,0.7)]" />
-              Connected
+              <SparkleIcon /> <span className="hidden sm:inline">Create product</span><span className="sm:hidden">Create</span>
             </Link>
           ) : (
             <Link to="/login" className="ghost-button shrink-0"><GithubIcon /> Login</Link>
