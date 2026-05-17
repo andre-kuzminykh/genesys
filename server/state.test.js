@@ -61,7 +61,7 @@ async function jsonReq(path, init = {}) {
   return { status: r.status, json: await r.json().catch(() => null) };
 }
 
-describe('TEST-GEN-220 — /api/state', () => {
+describe('TEST-FR-AUTH-006-S — /api/state (anonymous read)', () => {
   it('returns an empty store when nothing has happened yet', async () => {
     const r = await jsonReq('/api/state');
     assert.equal(r.status, 200);
@@ -69,7 +69,7 @@ describe('TEST-GEN-220 — /api/state', () => {
   });
 });
 
-describe('TEST-GEN-221 — /api/upvote', () => {
+describe('TEST-FR-UPVOTE-001..004-S — /api/upvote contract', () => {
   it('rejects requests without a bearer token', async () => {
     const r = await jsonReq('/api/upvote', { method: 'POST', body: JSON.stringify({ startupId: 'S-artrise' }) });
     assert.equal(r.status, 401);
@@ -125,7 +125,7 @@ describe('TEST-GEN-221 — /api/upvote', () => {
   });
 });
 
-describe('TEST-GEN-501-S — FR-GEN-501 one-handle = one-vote invariant', () => {
+describe('TEST-FR-UPVOTE-001-S — one-handle = one-vote invariant', () => {
   it('toggling the same startup four times alternates voted true/false and never duplicates the handle', async () => {
     const auth = { Authorization: 'Bearer token-mashan555' };
     const body = JSON.stringify({ startupId: 'S-bte' });
@@ -143,7 +143,7 @@ describe('TEST-GEN-501-S — FR-GEN-501 one-handle = one-vote invariant', () => 
   });
 });
 
-describe('TEST-GEN-502-S — FR-GEN-502 bad GitHub token surfaces as 401 BAD_TOKEN', () => {
+describe('TEST-FR-UPVOTE-002-S — bad GitHub token → 401 BAD_TOKEN', () => {
   it('returns 401 BAD_TOKEN when GitHub does not recognise the bearer', async () => {
     const r = await jsonReq('/api/upvote', {
       method: 'POST',
@@ -155,7 +155,7 @@ describe('TEST-GEN-502-S — FR-GEN-502 bad GitHub token surfaces as 401 BAD_TOK
   });
 });
 
-describe('TEST-GEN-602-S — FR-GEN-602 /api/llm/chat 503 when no OpenAI key', () => {
+describe('TEST-FR-BUILD-002-S — /api/llm/chat 503 NO_OPENAI_KEY contract', () => {
   it('returns 503 NO_OPENAI_KEY when the server has no OPENAI_API_KEY', async () => {
     // The Build wizard relies on this contract to surface a friendly inline
     // banner. The module-level OPENAI_API_KEY was set from env at import
@@ -183,7 +183,7 @@ describe('TEST-GEN-602-S — FR-GEN-602 /api/llm/chat 503 when no OpenAI key', (
   });
 });
 
-describe('TEST-GEN-222 — /api/invest', () => {
+describe('TEST-FR-INVEST-001..005-S — /api/invest contract', () => {
   it('refuses self-investment when the caller owns the startup', async () => {
     const r = await jsonReq('/api/invest', {
       method: 'POST',

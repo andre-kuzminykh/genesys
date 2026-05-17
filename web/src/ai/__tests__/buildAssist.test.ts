@@ -9,7 +9,7 @@ function mockChat(content: string, status = 200) {
   } as unknown as Response);
 }
 
-describe('TEST-GEN-601-C — FR-GEN-601 buildAssist routes through the same-origin /api/llm/chat proxy', () => {
+describe('TEST-FR-BUILD-001-C — buildAssist routes through /api/llm/chat', () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -31,7 +31,7 @@ describe('TEST-GEN-601-C — FR-GEN-601 buildAssist routes through the same-orig
   });
 });
 
-describe('TEST-GEN-607-C — FR-GEN-607 suggestFeatures clamps + normalises', () => {
+describe('TEST-FR-BUILD-007-C — suggestFeatures clamps to ≤ 8 + normalises priority', () => {
   it('limits the result to ≤ 8 entries and forces priority to one of must/should/could', async () => {
     const bogus = Array.from({ length: 12 }, (_, i) => ({
       name: `F${i}`, oneliner: `o${i}`, priority: i % 2 === 0 ? 'random-junk' : 'must',
@@ -49,7 +49,7 @@ describe('TEST-GEN-607-C — FR-GEN-607 suggestFeatures clamps + normalises', ()
   });
 });
 
-describe('TEST-GEN-602-CONTRACT — FR-GEN-602 NO_KEY surfaces as BuildAssistError', () => {
+describe('TEST-FR-BUILD-002-CONTRACT-C — NO_KEY surfaces as BuildAssistError', () => {
   it('throws BuildAssistError("NO_KEY") when /api/llm/chat replies 503', async () => {
     globalThis.fetch =vi.fn().mockResolvedValue({
       ok: false,

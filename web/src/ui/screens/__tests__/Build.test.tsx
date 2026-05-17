@@ -11,7 +11,7 @@ function renderBuild() {
   );
 }
 
-describe('TEST-GEN-605-C — FR-GEN-605 Step 2 is locked until Step 1 is filled', () => {
+describe('TEST-FR-BUILD-005-C — Step 2 locked while Step 1 is empty', () => {
   beforeEach(() => localStorage.clear());
 
   it('renders the Feature roadmap step shell with pointer-events-none + opacity-50 while step 1 is empty', () => {
@@ -23,7 +23,7 @@ describe('TEST-GEN-605-C — FR-GEN-605 Step 2 is locked until Step 1 is filled'
   });
 });
 
-describe('TEST-GEN-606-C — FR-GEN-606 magic-wand has no border / no background chrome', () => {
+describe('TEST-FR-BUILD-006-C — magic-wand has no border / no bg chrome', () => {
   beforeEach(() => localStorage.clear());
 
   it('renders sparkle buttons with no border-* and no bg-* classes — only hover-tinted glyphs', () => {

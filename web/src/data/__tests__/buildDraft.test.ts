@@ -3,7 +3,7 @@ import { EMPTY_DRAFT, loadDraft, saveDraft, randomId } from '../buildDraft';
 
 const KEY = 'genesys:build-draft:v1';
 
-describe('TEST-GEN-603-D — FR-GEN-603 loadDraft is defensive', () => {
+describe('TEST-FR-BUILD-003-D — loadDraft is defensive', () => {
   beforeEach(() => localStorage.clear());
 
   it('returns the empty draft when localStorage is empty', () => {
@@ -32,7 +32,7 @@ describe('TEST-GEN-603-D — FR-GEN-603 loadDraft is defensive', () => {
   });
 });
 
-describe('TEST-GEN-604-D — FR-GEN-604 saveDraft round-trips and stamps updatedAt', () => {
+describe('TEST-FR-BUILD-004-D — saveDraft round-trips + stamps updatedAt', () => {
   beforeEach(() => localStorage.clear());
 
   it('round-trips every field through localStorage and stamps updatedAt', () => {
