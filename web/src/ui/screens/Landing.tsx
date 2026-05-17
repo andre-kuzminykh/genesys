@@ -900,13 +900,15 @@ export function Landing() {
   return (
     <div className="min-h-screen">
       <header className="mx-auto max-w-5xl px-6 py-5">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr_auto] md:items-center md:gap-4">
-          {/* Row 1 on mobile (left-justified in 3-col grid on desktop): wordmark */}
+        <div className="flex flex-wrap items-center gap-3 md:grid md:grid-cols-[auto_1fr_auto] md:items-center md:gap-4">
+          {/* Wordmark — matches pill height on mobile (md size, h≈32 px),
+              scales up to xl (h 128) on desktop. */}
           <Link to="/" aria-label="Genesys home" className="shrink-0">
-            <Wordmark size="xl" />
+            <span className="md:hidden"><Wordmark size="md" /></span>
+            <span className="hidden md:inline-flex"><Wordmark size="xl" /></span>
           </Link>
 
-          {/* Row 3 on mobile (centre column on desktop): search */}
+          {/* Search — wraps to its own row on mobile, centres on desktop. */}
           <div className="order-last w-full md:order-none md:flex md:justify-center">
             <div className="flex w-full md:max-w-[420px] items-center gap-2 rounded-full border border-surfaceLight bg-surface px-4 py-2.5 focus-within:border-neon-500/60">
               <SearchIcon />
@@ -924,7 +926,7 @@ export function Landing() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 justify-between md:justify-end md:gap-3">
+        <div className="ml-auto flex items-center gap-2 md:gap-3">
           <Link
             to="/leaderboard"
             title={myHandle ? 'Open leaderboard · your wallet' : 'Sign in to invest · open leaderboard'}
