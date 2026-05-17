@@ -30,6 +30,7 @@ import { ComingSoon } from './ui/screens/ComingSoon';
 import { AuthSuccess } from './ui/screens/AuthSuccess';
 import { Terms } from './ui/screens/Terms';
 import { Privacy } from './ui/screens/Privacy';
+import { Build } from './ui/screens/Build';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -46,6 +47,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/denied" element={<Denied />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/build" element={<Build />} />
 
           {/* onboarding (gated, no app layout) */}
           <Route path="/onboarding/repo" element={<AuthGate><PickRepo /></AuthGate>} />

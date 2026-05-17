@@ -140,6 +140,35 @@ app.get('/auth/health', (_req, res) => {
 // on /v1/chat/completions). We forward the same request body server-side and
 // return the response payload unchanged so the frontend can keep parsing it
 // the same way.
+// Simple chat.completions passthrough — same security model as the Responses
+// proxy above, but for the cheap JSON chat path used by the Build wizard's
+// "magic wand" suggestions.
+app.post('/api/llm/chat', async (req, res) => {
+  if (!OPENAI_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'NO_OPENAI_KEY' });
+  }
+  const payload = { ...(req.body ?? {}) };
+  if (!payload.model) payload.model = OPENAI_MODEL;
+  const startTs = Date.now();
+  const tag = `[genesys-api] chat ${payload.model}`;
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await r.json().catch(() => ({}));
+    console.log(`${tag} ← ${r.status} (${Date.now() - startTs} ms)`);
+    return res.status(r.status).json(json);
+  } catch (e) {
+    console.error(`${tag} FAILED:`, e?.message ?? e);
+    return res.status(502).json({ ok: false, error: 'PROXY_FAILED', message: String(e?.message ?? e) });
+  }
+});
+
 app.post('/api/llm/responses', async (req, res) => {
   if (!OPENAI_API_KEY) {
     return res.status(503).json({ ok: false, error: 'NO_OPENAI_KEY' });
