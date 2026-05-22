@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../AppStore';
+import { useServer } from '../ServerStore';
 import { Wordmark } from '../components/Wordmark';
 import { Bento } from '../components/Bento';
 import { Chip } from '../components/Chip';
@@ -54,35 +55,39 @@ function saveCached(s: SimulationResult) {
 
 export function Leaderboard() {
   const { state } = useStore();
+  const server = useServer();
   const startups = useMemo(
     () => state.startups.filter((s) => s.published && s.batchId === state.activeBatchId),
     [state.startups, state.activeBatchId],
   );
 
   const bestInvestor = useMemo(() => {
-    if (state.investments.length === 0) return null;
+    // Real investments live on the server (ServerStore), not in AppStore.
+    const investments = server.state.investments;
+    if (investments.length === 0) return null;
     const cached = (() => { try { const r = localStorage.getItem('genesys:forecast:v1'); return r ? JSON.parse(r) as SimulationResult : null; } catch { return null; }})();
     const revenueByStartup: Record<string, number> = {};
     if (cached) for (const f of cached.startups) revenueByStartup[f.startupId] = f.totalRevenueUSD;
     const portfolio: Record<string, { invested: number; score: number }> = {};
-    for (const inv of state.investments) {
-      if (!portfolio[inv.investorHandle]) portfolio[inv.investorHandle] = { invested: 0, score: 0 };
-      portfolio[inv.investorHandle]!.invested += inv.amount;
+    for (const inv of investments) {
+      const handle = inv.investorHandle.toLowerCase();
+      if (!portfolio[handle]) portfolio[handle] = { invested: 0, score: 0 };
+      portfolio[handle]!.invested += inv.amount;
       // weight by projected revenue of the startup
-      portfolio[inv.investorHandle]!.score += inv.amount * ((revenueByStartup[inv.startupId] ?? 100_000) / 1_000_000);
+      portfolio[handle]!.score += inv.amount * ((revenueByStartup[inv.startupId] ?? 100_000) / 1_000_000);
     }
     const ranked = Object.entries(portfolio).map(([handle, p]) => ({ handle, ...p })).sort((a, b) => b.score - a.score);
     if (ranked.length === 0) return null;
     const top = ranked[0]!;
-    const user = state.users.find((u) => u.handle === top.handle);
+    const user = state.users.find((u) => u.handle.toLowerCase() === top.handle);
     return {
       handle: top.handle,
       name: user?.name ?? '@' + top.handle,
       invested: top.invested,
       score: top.score,
-      picks: state.investments.filter((i) => i.investorHandle === top.handle).length,
+      picks: investments.filter((i) => i.investorHandle.toLowerCase() === top.handle).length,
     };
-  }, [state.investments, state.users]);
+  }, [server.state.investments, state.users]);
 
   const [forecast, setForecast] = useState<SimulationResult | null>(() => loadCached());
   const [busy, setBusy] = useState(false);
