@@ -29,16 +29,15 @@ export function CookieBanner() {
       <div
         role="dialog"
         aria-label="Cookie notice"
-        className="mx-auto max-w-5xl rounded-2xl border border-surfaceLight bg-surface p-5 shadow-2xl backdrop-blur-md"
+        className="mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-surfaceLight bg-surface px-4 py-3 shadow-2xl backdrop-blur-md"
       >
-        <p className="text-center text-sm leading-relaxed text-textsec">
-          We use a single cookie-equivalent (localStorage) to keep your GitHub
-          session, your wallet and your votes between visits. No tracking, no ads.
+        <p className="flex-1 text-xs leading-snug text-textsec">
+          We use localStorage to keep your GitHub session, wallet and votes. No tracking, no ads.
         </p>
         <button
           type="button"
           onClick={accept}
-          className="neon-button mt-4 w-full !py-3 text-lg"
+          className="shrink-0 neon-button !px-4 !py-1.5 text-sm"
         >
           OK
         </button>
