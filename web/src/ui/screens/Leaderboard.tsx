@@ -18,6 +18,7 @@ import {
 } from '@/domain/simulation';
 import { OpenAILlmAdapter } from '@/ai/openai';
 import { BAKED_OPENAI_KEY, BAKED_OPENAI_MODEL, HAS_BAKED_KEY } from '@/ai/credentials';
+import { computeBestInvestor } from '@/domain/winners';
 
 const STORAGE_KEY = 'genesys:forecast:v1';
 
@@ -62,30 +63,19 @@ export function Leaderboard() {
   );
 
   const bestInvestor = useMemo(() => {
-    // Real investments live on the server (ServerStore), not in AppStore.
     const investments = server.state.investments;
-    if (investments.length === 0) return null;
     const cached = (() => { try { const r = localStorage.getItem('genesys:forecast:v1'); return r ? JSON.parse(r) as SimulationResult : null; } catch { return null; }})();
     const revenueByStartup: Record<string, number> = {};
     if (cached) for (const f of cached.startups) revenueByStartup[f.startupId] = f.totalRevenueUSD;
-    const portfolio: Record<string, { invested: number; score: number }> = {};
-    for (const inv of investments) {
-      const handle = inv.investorHandle.toLowerCase();
-      if (!portfolio[handle]) portfolio[handle] = { invested: 0, score: 0 };
-      portfolio[handle]!.invested += inv.amount;
-      // weight by projected revenue of the startup
-      portfolio[handle]!.score += inv.amount * ((revenueByStartup[inv.startupId] ?? 100_000) / 1_000_000);
-    }
-    const ranked = Object.entries(portfolio).map(([handle, p]) => ({ handle, ...p })).sort((a, b) => b.score - a.score);
-    if (ranked.length === 0) return null;
-    const top = ranked[0]!;
+    const top = computeBestInvestor(investments, revenueByStartup);
+    if (!top) return null;
     const user = state.users.find((u) => u.handle.toLowerCase() === top.handle);
     return {
       handle: top.handle,
       name: user?.name ?? '@' + top.handle,
       invested: top.invested,
       score: top.score,
-      picks: investments.filter((i) => i.investorHandle.toLowerCase() === top.handle).length,
+      picks: top.picks,
     };
   }, [server.state.investments, state.users]);
 
