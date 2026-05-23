@@ -836,9 +836,10 @@ export function Landing() {
   }, [server]);
 
   const featured = useMemo(() => {
+    // Carousel surfaces every cohort startup (live upvote-sorted) so each of
+    // the 16 founders gets stage time, not only the current top of the board.
     return [...published]
-      .sort((a, b) => upvoteOf(b.startup.id) - upvoteOf(a.startup.id))
-      .slice(0, 4);
+      .sort((a, b) => upvoteOf(b.startup.id) - upvoteOf(a.startup.id));
   }, [published, upvoteOf]);
 
   const [query, setQuery] = useState('');

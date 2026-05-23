@@ -46,3 +46,24 @@ describe('TEST-GEN-214 — Landing list is a responsive 2-column grid', () => {
     expect(ul.className).toContain('md:grid-cols-2');
   });
 });
+
+describe('TEST-FR-LAND-002-C — Featured carousel cycles through every cohort startup', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  it('renders one navigation dot per published cohort startup (16, not 4)', () => {
+    renderLanding();
+    // Each dot is rendered with aria-label "Go to slide N" — count them
+    // and make sure the carousel covers the entire 16-startup roster instead
+    // of the legacy top-4 slice.
+    const dots = screen.getAllByRole('button', { name: /^Go to slide \d+$/i });
+    expect(dots.length).toBe(16);
+    // The last slide must be reachable — proves the carousel is not capped at 4.
+    expect(screen.getByRole('button', { name: /^Go to slide 16$/i })).toBeInTheDocument();
+  });
+
+  it('exposes prev/next controls so visitors can drive the carousel manually', () => {
+    renderLanding();
+    expect(screen.getByRole('button', { name: /^previous$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^next$/i })).toBeInTheDocument();
+  });
+});

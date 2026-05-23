@@ -245,8 +245,9 @@ Feature: FEAT-AUTH — GitHub OAuth login
 
 - **US-LAND-01** — As a visitor I want to see the cohort startup roster on
   the home page so I can quickly understand what the cohort built.
-- **US-LAND-02** — As a visitor I want a hero carousel of the top-ranked
-  startups so I can sample the best work first.
+- **US-LAND-02** — As a visitor I want a hero carousel that rotates through
+  every cohort startup (live upvote-sorted) so each of the 16 founders gets
+  stage time, not only the current top of the leaderboard.
 - **US-LAND-03** — As a visitor I want a search box + horizontally-scrolling
   hashtag chips so I can filter the list.
 - **US-LAND-04** — As a visitor on mobile I want the page to feel native,
@@ -258,7 +259,8 @@ Feature: FEAT-AUTH — GitHub OAuth login
 2. Header: wordmark, wallet pill ($100k default for anonymous), theme
    toggle, Connected pill (if signed in) or Login.
 3. Search box + hashtag chip strip below the header.
-4. Featured carousel (top 4 by upvote count) with prev/next.
+4. Featured carousel (all 16 published cohort startups, sorted by live
+   upvote count) with prev/next arrows and tap-to-jump dots.
 5. Below: a `grid-cols-1 md:grid-cols-2` list of 20 startups per page,
    `Load more` via IntersectionObserver-driven infinite scroll.
 6. Click a card → DetailDialog opens with the cover, pitch, hashtags, full
@@ -274,7 +276,7 @@ Feature: FEAT-LANDING — Browse cohort startups
     Given there are 16 published startups in the seed
     When I open /
     Then the page renders the brand header within 1 second
-      And the Featured carousel shows the 1st of 4 featured cards
+      And the Featured carousel shows the 1st of 16 cohort cards
       And the list below shows the top 20 startups in a 2-col grid (md+)
 ```
 
@@ -294,7 +296,7 @@ Feature: FEAT-LANDING — Browse cohort startups
 | ID | Requirement | Test |
 |---|---|---|
 | FR-LAND-001 | The Landing list MUST render `grid grid-cols-1 md:grid-cols-2 gap-6` so cards lay out single-column on mobile and 2-column on md+. | TEST-FR-LAND-001-C |
-| FR-LAND-002 | Featured carousel MUST surface the top 4 startups ranked by `upvoteOf(id) DESC` (live, not cached) and cycle every 6 s when not hovered. | TEST-FR-LAND-002-C |
+| FR-LAND-002 | Featured carousel MUST surface every published startup in the active batch (16 in the seed cohort) ranked by `upvoteOf(id) DESC` (live, not cached), expose one navigation dot per slide and cycle every 6 s when not hovered. | TEST-FR-LAND-002-C |
 | FR-LAND-003 | The DetailDialog upvote button MUST live in the title row (NOT overlaid on the cover image) so prev/next nav buttons never intercept it. | TEST-FR-LAND-003-C |
 | FR-LAND-004 | Hashtag chips MUST live in a horizontal-scroll strip with hidden scrollbar; chips MUST `whitespace-nowrap shrink-0`. | TEST-FR-LAND-004-C |
 | FR-LAND-005 | The list MUST paginate via IntersectionObserver — visible items default 20, +20 per sentinel intersection; resets on query/tag changes. | TEST-FR-LAND-005-C |
@@ -670,3 +672,4 @@ and you can grep the SPEC for that ID in seconds.
 |---------|------------|--------|--------|
 | v0.1.x  | 2026-05-14..16 | Incremental sections appended as features shipped. | DEPRECATED (kept for traceability) |
 | **v0.2** | 2026-05-17 | **Re-baseline of the live system. ID convention switched to `FR-{FEAT}-NNN` + matching test IDs.** | REVIEW_READY |
+| v0.2.1  | 2026-05-23 | FR-LAND-002 updated: Featured carousel now cycles through every published cohort startup (16) instead of the top-4 slice, so every founder gets stage time on the home page. US-LAND-02, UC-LAND-01 wording aligned. Covered by `TEST-FR-LAND-002-C` (dot count + prev/next controls). No other section impacted. | UPDATED |
