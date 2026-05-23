@@ -115,28 +115,34 @@ describe('TEST-FR-AUTH-007-S — /auth/github requests no GitHub scopes', () => 
   });
 });
 
-describe('TEST-FR-FORECAST-001-S — /api/forecast admin gate', () => {
-  it('rejects POST without a bearer token (NO_TOKEN)', async () => {
-    const r = await jsonReq('/api/forecast', { method: 'POST', body: JSON.stringify({ startups: [] }) });
-    assert.equal(r.status, 401);
-    assert.equal(r.json.error, 'NO_TOKEN');
-  });
-
-  it('rejects POST from an allowlisted but non-admin cohort member (FORBIDDEN)', async () => {
+describe('TEST-FR-FORECAST-001-S — /api/forecast anonymous-friendly persistence', () => {
+  it('accepts POST without a bearer token (anonymous demo flow)', async () => {
+    const payload = { startups: [{ startupId: 'S-anon', endUsers: 1, totalRevenueUSD: 1 }] };
     const r = await jsonReq('/api/forecast', {
       method: 'POST',
-      headers: { Authorization: 'Bearer token-mashan555' },
-      body: JSON.stringify({ startups: [] }),
+      body: JSON.stringify(payload),
     });
-    assert.equal(r.status, 403);
-    assert.equal(r.json.error, 'NOT_ADMIN');
+    assert.equal(r.status, 200);
+    assert.equal(r.json.ok, true);
+
+    const g = await jsonReq('/api/forecast');
+    assert.equal(g.status, 200);
+    assert.deepEqual(g.json.startups, payload.startups);
   });
 
-  it('accepts POST from an admin and persists the payload', async () => {
+  it('rejects an array body with 400 BAD_BODY', async () => {
+    // express.json() will already reject bare strings/numbers; the handler
+    // only needs to guard against arrays and null (both of which slip past
+    // the parser as valid JSON values that aren't useful forecasts).
+    const r = await jsonReq('/api/forecast', { method: 'POST', body: '[]' });
+    assert.equal(r.status, 400);
+    assert.equal(r.json.error, 'BAD_BODY');
+  });
+
+  it('persists the latest payload on every POST (overwrite semantics)', async () => {
     const payload = { startups: [{ startupId: 'S-artrise', endUsers: 12345, totalRevenueUSD: 670000 }], months: ['2025-06', '2025-07'] };
     const r = await jsonReq('/api/forecast', {
       method: 'POST',
-      headers: { Authorization: 'Bearer token-andre-kuzminykh' },
       body: JSON.stringify(payload),
     });
     assert.equal(r.status, 200);

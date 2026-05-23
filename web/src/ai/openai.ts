@@ -1,19 +1,20 @@
 /**
  * Real OpenAI adapter for the LlmPort.
  *
- * The API key is supplied at construction time. It is NEVER bundled into the
- * source — Vite reads it from import.meta.env.VITE_OPENAI_API_KEY at build
- * time (see web/Dockerfile + docker-compose.yml).
+ * Both methods now route through same-origin proxies (server/index.js holds
+ * the API key) so the browser bundle never carries a real OpenAI key. This
+ * removes the entire class of "stale baked key" problems: rotating the
+ * server-side OPENAI_API_KEY and `docker compose up -d --force-recreate auth`
+ * is enough — no web rebuild required.
  *
- * Note: OpenAI allow-lists CORS for chat completions, so this works directly
- * from the browser. For production you should still use a backend proxy so
- * the key isn't exposed to the user's browser inspector.
+ * `apiKey` in OpenAIConfig is kept as an optional, vestigial field so older
+ * call sites can keep passing it without a type error; we never read it.
  */
 
 import type { LlmPort, MonthlyEvent, MonthlyPoint, UserReview, MarketReview } from '@/domain/simulation';
 import type { PersonaId, Startup } from '@/domain/types';
 
-const ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+const CHAT_PROXY_ENDPOINT = '/api/llm/chat';
 // Same-origin proxy backed by server/index.js — OpenAI doesn't expose CORS
 // on the Responses API, so calling /v1/responses directly from the browser
 // fails with "Failed to fetch". The proxy signs the request server-side.
@@ -21,7 +22,7 @@ const RESPONSES_PROXY_ENDPOINT = '/api/llm/responses';
 const DEFAULT_MODEL = 'gpt-4o';
 
 export interface OpenAIConfig {
-  apiKey: string;
+  apiKey?: string;
   model?: string;
 }
 
@@ -43,12 +44,9 @@ export class OpenAILlmAdapter implements LlmPort {
   constructor(private cfg: OpenAIConfig) {}
 
   private async chat<T>(prompt: string, opts: { max_tokens?: number; temperature?: number } = {}): Promise<T> {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(CHAT_PROXY_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.cfg.apiKey}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: this.cfg.model ?? DEFAULT_MODEL,
         response_format: { type: 'json_object' },

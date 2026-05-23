@@ -1,26 +1,27 @@
 /**
- * OpenAI credentials loaded from build-time env vars.
+ * OpenAI credentials shim — kept only so older call sites compile cleanly.
  *
- * Vite inlines `import.meta.env.VITE_*` at compile time. To bake your key into
- * the bundle, create a local `.env` (gitignored) in this folder:
+ * Real key handling now lives entirely on the server (server/index.js holds
+ * OPENAI_API_KEY and the browser reaches OpenAI via the same-origin
+ * /api/llm/chat + /api/llm/responses + /api/llm/image proxies). That means:
  *
- *     VITE_OPENAI_API_KEY=sk-proj-...
- *     VITE_OPENAI_MODEL=gpt-4o-mini
+ *   - the browser bundle no longer contains a real OpenAI key,
+ *   - rotating the key is a server-side `.env` edit + `docker compose up -d --force-recreate auth`,
+ *   - no `docker compose build web` is needed for key rotation.
  *
- * Or pass --build-arg on `docker compose build` (see web/Dockerfile).
- *
- * If no key is provided the OpenAI adapter throws on first call and the
- * runner silently falls back to the deterministic MockLlmAdapter.
- *
- * ⚠ The key ends up in the public JS bundle and is visible to anyone who
- *   opens DevTools on the deployed page. Rotate the key after the demo,
- *   or move OpenAI calls behind a backend proxy.
+ * VITE_OPENAI_MODEL is still honoured at build time for the rare case where
+ * we want the client to default to a specific model name in the request body
+ * the proxy forwards; the server-side OPENAI_MODEL acts as the final fallback
+ * when the client doesn't ask for one.
  */
 
-export const BAKED_OPENAI_KEY =
-  (import.meta.env.VITE_OPENAI_API_KEY as string | undefined)?.trim() ?? '';
+export const BAKED_OPENAI_KEY = '';
 
 export const BAKED_OPENAI_MODEL =
-  (import.meta.env.VITE_OPENAI_MODEL as string | undefined)?.trim() || 'gpt-4o';
+  (import.meta.env.VITE_OPENAI_MODEL as string | undefined)?.trim() || 'gpt-4o-mini';
 
-export const HAS_BAKED_KEY = BAKED_OPENAI_KEY.length > 0;
+// True at the type level so existing call sites keep using OpenAILlmAdapter
+// (which now goes through the proxy). The adapter will surface a NO_OPENAI_KEY
+// 503 from the proxy if the server itself has no key, and the runner falls
+// back to MockLlmAdapter on that error.
+export const HAS_BAKED_KEY = true;

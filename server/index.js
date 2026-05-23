@@ -333,19 +333,14 @@ app.get('/api/forecast', async (_req, res) => {
   }
 });
 
-// POST is admin-only so a random cohort visitor can't clobber the official
-// forecast between the demo and the scoreboard reveal. Accepts up to 1 MB
-// to comfortably fit a 16-startup × 13-month SimulationResult.
+// POST is intentionally anonymous so the public demo can run a simulation
+// without forcing a GitHub login: anyone visiting /leaderboard can drive the
+// year-long forecast and the CLI scoreboard immediately reflects it. The
+// trade-off is that a later visitor's run overwrites the previous one — fine
+// for the cohort demo (we only care about the latest play-through). Accepts
+// up to 1 MB to comfortably fit a 16-startup × 13-month SimulationResult.
 app.post('/api/forecast', express.json({ limit: '1mb' }), async (req, res) => {
-  const token = bearer(req);
-  if (!token) return res.status(401).json({ ok: false, error: 'NO_TOKEN' });
-  let login;
-  try { login = await whoami(token); }
-  catch (e) { return res.status(401).json({ ok: false, error: 'BAD_TOKEN' }); }
-  if (!ADMINS.has(login.toLowerCase())) {
-    return res.status(403).json({ ok: false, error: 'NOT_ADMIN', login });
-  }
-  if (!req.body || typeof req.body !== 'object') {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
     return res.status(400).json({ ok: false, error: 'BAD_BODY' });
   }
   try {
