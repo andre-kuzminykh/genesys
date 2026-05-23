@@ -115,6 +115,54 @@ describe('TEST-FR-AUTH-007-S — /auth/github requests no GitHub scopes', () => 
   });
 });
 
+describe('TEST-FR-FORECAST-001-S — /api/forecast admin gate', () => {
+  it('rejects POST without a bearer token (NO_TOKEN)', async () => {
+    const r = await jsonReq('/api/forecast', { method: 'POST', body: JSON.stringify({ startups: [] }) });
+    assert.equal(r.status, 401);
+    assert.equal(r.json.error, 'NO_TOKEN');
+  });
+
+  it('rejects POST from an allowlisted but non-admin cohort member (FORBIDDEN)', async () => {
+    const r = await jsonReq('/api/forecast', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token-mashan555' },
+      body: JSON.stringify({ startups: [] }),
+    });
+    assert.equal(r.status, 403);
+    assert.equal(r.json.error, 'NOT_ADMIN');
+  });
+
+  it('accepts POST from an admin and persists the payload', async () => {
+    const payload = { startups: [{ startupId: 'S-artrise', endUsers: 12345, totalRevenueUSD: 670000 }], months: ['2025-06', '2025-07'] };
+    const r = await jsonReq('/api/forecast', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token-andre-kuzminykh' },
+      body: JSON.stringify(payload),
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.ok, true);
+
+    // GET round-trip — the body comes back unchanged.
+    const g = await jsonReq('/api/forecast');
+    assert.equal(g.status, 200);
+    assert.deepEqual(g.json.startups, payload.startups);
+    assert.deepEqual(g.json.months, payload.months);
+  });
+});
+
+describe('TEST-FR-FORECAST-002-S — /api/forecast GET when nothing stored', () => {
+  it('returns 404 NO_FORECAST when no simulation has been posted yet', async () => {
+    // beforeEach wipes the state file but NOT the forecast file, so we have to
+    // remove it explicitly to assert the empty-state shape.
+    const fcPath = path.join(path.dirname(process.env.STATE_FILE), 'forecast.json');
+    await fs.rm(fcPath, { force: true });
+
+    const r = await jsonReq('/api/forecast');
+    assert.equal(r.status, 404);
+    assert.equal(r.json.error, 'NO_FORECAST');
+  });
+});
+
 describe('TEST-FR-UPVOTE-001..004-S — /api/upvote contract', () => {
   it('rejects requests without a bearer token', async () => {
     const r = await jsonReq('/api/upvote', { method: 'POST', body: JSON.stringify({ startupId: 'S-artrise' }) });

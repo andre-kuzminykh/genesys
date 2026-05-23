@@ -164,6 +164,17 @@ export function Leaderboard() {
     }
 
     saveCached(result);
+    // Mirror the simulation server-side so CLI scoreboard tooling can read off
+    // the revenue-weighted investor ranking after the demo. POST is admin-only
+    // (server enforces ADMINS set); non-admins get a silent 403, no UI impact.
+    const token = state.session?.accessToken;
+    if (token) {
+      void fetch('/api/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(result),
+      }).catch(() => { /* silent — the local cache is the source of truth for the UI */ });
+    }
     setForecast(result);
     queueRef.current = [];
     logActivity(`🤖 Research complete — rolling the year-long news tape…`);

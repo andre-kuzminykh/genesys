@@ -2,30 +2,36 @@
 /**
  * Investor scoreboard CLI.
  *
- *   node scripts/scoreboard.js                       # state + invested-only ranking
- *   node scripts/scoreboard.js --forecast=fc.json    # state + simulated revenue weights
- *   node scripts/scoreboard.js --state=/path/to/state.json --forecast=fc.json
+ *   node scripts/scoreboard.js                       # auto-uses forecast.json next to state.json
+ *   node scripts/scoreboard.js --forecast=fc.json    # explicit forecast path
+ *   node scripts/scoreboard.js --forecast=none       # force invested-only ranking
+ *   node scripts/scoreboard.js --state=/path/to/state.json
  *
- * Defaults match the production VM (/opt/genesis/data/state.json).
+ * Defaults match the production VM (/opt/genesis/data/state.json +
+ * /opt/genesis/data/forecast.json). The auth server writes forecast.json on
+ * each admin-driven simulation run via POST /api/forecast, so once
+ * andre-kuzminykh has run the simulation in the browser, this script just
+ * works without any manual file shuffling.
  *
  * state.json shape:  { upvotes: {...}, investments: [{ startupId, investorHandle, amount }, ...] }
- * forecast.json shape (copy of browser localStorage 'genesys:forecast:v1'):
- *   { startups: [{ startupId, endUsers, totalRevenueUSD }, ...] }
+ * forecast.json shape (a SimulationResult — mirrors browser's 'genesys:forecast:v1'):
+ *   { startups: [{ startupId, endUsers, totalRevenueUSD, monthly: [...] }, ...], months: [...] }
  *
  * Score formula (mirrors web/src/domain/winners.ts → computeBestInvestor):
  *   score = Σ amount × (startupRevenue / 1_000_000)        — per investor
- *   when no forecast is supplied, every startup gets the DEFAULT_REVENUE of $100k,
+ *   when no forecast is found, every startup gets the DEFAULT_REVENUE of $100k,
  *   so the ranking collapses to "by total invested".
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
+import path from 'node:path';
 
 const DEFAULT_STATE = '/opt/genesis/data/state.json';
 const DEFAULT_REVENUE = 100_000;
 const REVENUE_DENOMINATOR = 1_000_000;
 
 function parseArgs(argv) {
-  const out = { state: DEFAULT_STATE, forecast: null };
+  const out = { state: DEFAULT_STATE, forecast: undefined };
   for (const a of argv.slice(2)) {
     const m = a.match(/^--([a-z]+)=(.*)$/);
     if (!m) continue;
@@ -33,6 +39,13 @@ function parseArgs(argv) {
     if (m[1] === 'forecast') out.forecast = m[2];
   }
   return out;
+}
+
+// When --forecast is not passed, look for forecast.json sitting next to the
+// state file (the server writes there on each admin-driven simulation run).
+async function autoForecastPath(statePath) {
+  const guess = path.join(path.dirname(statePath), 'forecast.json');
+  try { await stat(guess); return guess; } catch { return null; }
 }
 
 function fmtUSD(n) {
@@ -62,10 +75,17 @@ async function main() {
   });
   const investments = Array.isArray(state.investments) ? state.investments : [];
 
+  // --forecast=<path> wins; otherwise auto-detect the sibling forecast.json.
+  // `--forecast=none` (literal) explicitly disables auto-detection so the
+  // ranking falls back to invested-only.
+  let forecastPath = args.forecast;
+  if (forecastPath === undefined) forecastPath = await autoForecastPath(args.state);
+  if (forecastPath === 'none') forecastPath = null;
+
   let revenueByStartup = {};
-  if (args.forecast) {
-    const fc = await loadJSON(args.forecast).catch((e) => {
-      console.error(`scoreboard: cannot read forecast at ${args.forecast}: ${e.message}`);
+  if (forecastPath) {
+    const fc = await loadJSON(forecastPath).catch((e) => {
+      console.error(`scoreboard: cannot read forecast at ${forecastPath}: ${e.message}`);
       process.exit(1);
     });
     const rows = Array.isArray(fc.startups) ? fc.startups : [];
@@ -94,14 +114,14 @@ async function main() {
     .map(([handle, p]) => ({ handle, ...p }))
     .sort((a, b) => b.score - a.score || b.invested - a.invested);
 
-  const hasForecast = args.forecast !== null;
+  const hasForecast = forecastPath !== null;
   const totalInvested = investments.reduce((a, b) => a + b.amount, 0);
 
   console.log('');
   console.log(`Genesys investor scoreboard — ${investments.length} investments · ${fmtUSD(totalInvested)} total`);
   console.log(hasForecast
-    ? `  weighted by forecast revenue from ${args.forecast}`
-    : `  no forecast supplied — ranking by total invested (pass --forecast=path/to/forecast.json for weighted score)`);
+    ? `  weighted by forecast revenue from ${forecastPath}`
+    : `  no forecast found — ranking by total invested (run the simulation as admin, or pass --forecast=path/to/forecast.json)`);
   console.log('');
 
   console.log(`  ${pad('#', 3)}  ${pad('handle', 22, true)}  ${pad('picks', 6)}  ${pad('invested', 12)}  ${pad('score', 12)}`);

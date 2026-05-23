@@ -15,6 +15,10 @@ const CLIENT_ID = (process.env.GITHUB_CLIENT_ID || '').trim();
 const CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET || '').trim();
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, ''); // no trailing slash
 const STATE_FILE = process.env.STATE_FILE || '/data/state.json';
+// Forecast file lives next to state.json. Admin (andre-kuzminykh) posts a
+// SimulationResult here after a play-through so CLI tooling
+// (scripts/scoreboard.js) can weight investor picks by projected revenue.
+const FORECAST_FILE = path.join(path.dirname(STATE_FILE), 'forecast.json');
 // Plain GitHub sign-in only — no repo access, no private profile access.
 // The /user endpoint returns the public login without any scope.
 const SCOPE = '';
@@ -310,6 +314,51 @@ function totalInvested(handle) {
     .filter((i) => i.investorHandle.toLowerCase() === handle.toLowerCase())
     .reduce((a, b) => a + b.amount, 0);
 }
+
+// -------------------------- Forecast snapshot ------------------------------
+// The simulation runs in the browser (LLM call) and lives in localStorage by
+// default. We persist the latest admin-driven run server-side so CLI tooling
+// can read off the revenue-weighted investor scoreboard after a play-through.
+// Body shape: a SimulationResult (~30-80kb depending on month-event volume).
+
+app.get('/api/forecast', async (_req, res) => {
+  try {
+    const raw = await fs.readFile(FORECAST_FILE, 'utf8');
+    res.type('application/json').send(raw);
+  } catch (e) {
+    if (e?.code === 'ENOENT') {
+      return res.status(404).json({ ok: false, error: 'NO_FORECAST' });
+    }
+    return res.status(500).json({ ok: false, error: 'READ_FAILED', message: String(e?.message ?? e) });
+  }
+});
+
+// POST is admin-only so a random cohort visitor can't clobber the official
+// forecast between the demo and the scoreboard reveal. Accepts up to 1 MB
+// to comfortably fit a 16-startup × 13-month SimulationResult.
+app.post('/api/forecast', express.json({ limit: '1mb' }), async (req, res) => {
+  const token = bearer(req);
+  if (!token) return res.status(401).json({ ok: false, error: 'NO_TOKEN' });
+  let login;
+  try { login = await whoami(token); }
+  catch (e) { return res.status(401).json({ ok: false, error: 'BAD_TOKEN' }); }
+  if (!ADMINS.has(login.toLowerCase())) {
+    return res.status(403).json({ ok: false, error: 'NOT_ADMIN', login });
+  }
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ ok: false, error: 'BAD_BODY' });
+  }
+  try {
+    await fs.mkdir(path.dirname(FORECAST_FILE), { recursive: true });
+    const tmp = FORECAST_FILE + '.tmp';
+    await fs.writeFile(tmp, JSON.stringify(req.body), 'utf8');
+    await fs.rename(tmp, FORECAST_FILE);
+    return res.json({ ok: true, savedAt: Date.now(), bytes: Buffer.byteLength(JSON.stringify(req.body)) });
+  } catch (e) {
+    console.error('[genesys-api] failed to persist forecast:', e);
+    return res.status(500).json({ ok: false, error: 'WRITE_FAILED', message: String(e?.message ?? e) });
+  }
+});
 
 app.post('/api/upvote', async (req, res) => {
   const token = bearer(req);
