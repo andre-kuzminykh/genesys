@@ -37,6 +37,7 @@ const ALLOWLIST = new Set([
   'maxlevitsky', 'mitya139', 'petrenkosofya', 'rusyaew',
   'somethingnew179', 'weethet',
   'andreykuzminykh-hub',
+  'andre-dataistos',
 ].map((h) => h.toLowerCase()));
 
 // Map of startup -> owner handle, used to enforce the no-self-invest rule.
