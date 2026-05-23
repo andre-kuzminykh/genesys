@@ -16,6 +16,10 @@ process.env.PORT = '0';
 process.env.GITHUB_CLIENT_ID = 'dummy-client-id';
 process.env.GITHUB_CLIENT_SECRET = 'dummy-secret';
 process.env.PUBLIC_URL = 'http://localhost';
+// Force "no LLM" mode for the whole test suite — the sentinel value is the
+// same one operators write into the production .env to disable the OpenAI
+// proxy without removing the variable (FR-LLM-DISABLE-001).
+process.env.OPENAI_API_KEY = 'none';
 
 // Intercept fetch *only* for api.github.com so whoami() returns a deterministic
 // login per token (we use tokens like "token-andre-kuzminykh" in tests). All
@@ -166,6 +170,32 @@ describe('TEST-FR-FORECAST-002-S — /api/forecast GET when nothing stored', () 
     const r = await jsonReq('/api/forecast');
     assert.equal(r.status, 404);
     assert.equal(r.json.error, 'NO_FORECAST');
+  });
+});
+
+describe('TEST-FR-LLM-DISABLE-001-S — OPENAI_API_KEY sentinel disables the proxy', () => {
+  it('/auth/health reports openai.hasKey=false when the env value is "none"', async () => {
+    const r = await fetch(base + '/auth/health');
+    const j = await r.json();
+    assert.equal(j.openai.hasKey, false, `expected hasKey=false, got ${JSON.stringify(j.openai)}`);
+  });
+
+  it('/api/llm/chat returns 503 NO_OPENAI_KEY without ever calling OpenAI', async () => {
+    const r = await jsonReq('/api/llm/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] }),
+    });
+    assert.equal(r.status, 503);
+    assert.equal(r.json.error, 'NO_OPENAI_KEY');
+  });
+
+  it('/api/llm/responses returns 503 NO_OPENAI_KEY without ever calling OpenAI', async () => {
+    const r = await jsonReq('/api/llm/responses', {
+      method: 'POST',
+      body: JSON.stringify({ input: 'hi' }),
+    });
+    assert.equal(r.status, 503);
+    assert.equal(r.json.error, 'NO_OPENAI_KEY');
   });
 });
 

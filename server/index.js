@@ -28,7 +28,12 @@ const CREDITS_PER_INVESTOR = 100000;
 // from the browser. Browser CORS blocks /v1/responses directly, so we sign
 // the request server-side and forward the body unchanged. The key stays out
 // of the JS bundle when callers route through the proxy.
-const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || '').trim();
+// Empty / "none" / "off" / "mock" all mean "no LLM" — proxy endpoints return
+// 503 and the browser falls back to the deterministic mock simulation. This
+// lets us keep the key OUT of every artifact (no .env value to leak, no JS
+// bundle field) while preserving the same /api/llm/* surface for tests.
+const OPENAI_API_KEY_RAW = (process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY || '').trim();
+const OPENAI_API_KEY = /^(|none|off|mock|disabled)$/i.test(OPENAI_API_KEY_RAW) ? '' : OPENAI_API_KEY_RAW;
 const OPENAI_MODEL = (process.env.OPENAI_MODEL || process.env.VITE_OPENAI_MODEL || 'gpt-4o').trim();
 
 // Cohort allowlist — kept in sync with web/src/data/seed.ts. Comparison is
