@@ -17,9 +17,9 @@ function bootstrapSession(handle: string) {
   );
   unmount();
 
-  const stored = JSON.parse(localStorage.getItem('genesys:v0.9') ?? '{}');
+  const stored = JSON.parse(localStorage.getItem('genesys:v0.10') ?? '{}');
   stored.session = { handle, loggedInAt: Date.now() };
-  localStorage.setItem('genesys:v0.9', JSON.stringify(stored));
+  localStorage.setItem('genesys:v0.10', JSON.stringify(stored));
 }
 
 function renderLanding() {
