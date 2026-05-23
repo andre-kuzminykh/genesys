@@ -5,7 +5,7 @@ import { AppStoreProvider } from '@/ui/AppStore';
 import { ThemeProvider } from '@/ui/Theme';
 import { ServerStoreProvider, useServer } from '@/ui/ServerStore';
 
-const STORAGE_KEY = 'genesys:v0.10';
+const STORAGE_KEY = 'genesys:v0.11';
 const STATE_EMPTY = { ok: true, status: 200, json: async () => ({ upvotes: {}, investments: [] }) };
 
 type RouteMap = {

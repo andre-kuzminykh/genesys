@@ -15,7 +15,9 @@ const CLIENT_ID = (process.env.GITHUB_CLIENT_ID || '').trim();
 const CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET || '').trim();
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, ''); // no trailing slash
 const STATE_FILE = process.env.STATE_FILE || '/data/state.json';
-const SCOPE = 'read:user repo';
+// Plain GitHub sign-in only — no repo access, no private profile access.
+// The /user endpoint returns the public login without any scope.
+const SCOPE = '';
 const CREDITS_PER_INVESTOR = 100000;
 
 // Server-side OpenAI key — used to proxy the Responses API (web_search) call
@@ -38,6 +40,7 @@ const ALLOWLIST = new Set([
   'somethingnew179', 'weethet',
   'andreykuzminykh-hub',
   'andre-dataistos',
+  'ruguosob',
 ].map((h) => h.toLowerCase()));
 
 // Map of startup -> owner handle, used to enforce the no-self-invest rule.

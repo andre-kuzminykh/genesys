@@ -81,6 +81,7 @@ export function seedState(): AppState {
     { handle: 'weethet',          name: 'WeetHet',          role: 'founder', avatarSeed: 'weethet' },
     { handle: 'andreykuzminykh-hub', name: 'Andrey Kuzminykh', role: 'founder', avatarSeed: 'andreykuzminykh-hub' },
     { handle: 'andre-dataistos', name: 'Andre Dataistos', role: 'founder', avatarSeed: 'andre-dataistos' },
+    { handle: 'ruguosob',         name: 'Ruguosob',         role: 'founder', avatarSeed: 'ruguosob' },
   ];
 
   const batch = {
@@ -94,6 +95,7 @@ export function seedState(): AppState {
       'somethingnew179', 'weethet',
       'andreykuzminykh-hub',
       'andre-dataistos',
+      'ruguosob',
     ],
     creditsPerInvestor: 100000,
     selfInvestPolicy: 'FORBIDDEN' as const,

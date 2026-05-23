@@ -172,7 +172,9 @@ human-1 VM (europe-west1-b)
 
 1. Visitor clicks "Continue with GitHub" on `/login`.
 2. Browser → `GET /auth/github` → server redirects to
-   `github.com/login/oauth/authorize?...redirect_uri=$PUBLIC_URL/auth/github/callback`.
+   `github.com/login/oauth/authorize?...redirect_uri=$PUBLIC_URL/auth/github/callback`
+   with an **empty `scope=`** so the consent screen never asks for repo or
+   private-profile access (plain sign-in only).
 3. GitHub redirects back with `?code=…`.
 4. Server `GET /auth/github/callback` exchanges code for an access token
    server-side (with the client secret), then redirects browser to
@@ -234,6 +236,7 @@ Feature: FEAT-AUTH — GitHub OAuth login
 | FR-AUTH-004  | Logins MUST be lowercased before comparison against the allowlist. | TEST-FR-AUTH-004-C |
 | FR-AUTH-005  | `/auth/github` MUST refuse to redirect when the env contains placeholder values (matched by `PLACEHOLDER_RX`). | TEST-FR-AUTH-005-I |
 | FR-AUTH-006  | `/auth/health` MUST report `configured`, `publicUrl`, and `openai: { hasKey, model }` without auth. | TEST-FR-AUTH-006-S |
+| FR-AUTH-007  | `/auth/github` MUST redirect to GitHub with an empty `scope=` parameter — the demo only needs the public login from `GET /user`, so the consent screen never asks for repo or private-profile permissions. | TEST-FR-AUTH-007-S |
 | NFR-AUTH-001 | The GitHub token MUST NOT appear in browser history (`history.replaceState(null,'','/auth/success')` strips the fragment). | TEST-NFR-AUTH-001-C |
 | NFR-AUTH-002 | The OAuth round-trip MUST land < 5 s p95 on a normal connection. | (manual) |
 
@@ -673,3 +676,4 @@ and you can grep the SPEC for that ID in seconds.
 | v0.1.x  | 2026-05-14..16 | Incremental sections appended as features shipped. | DEPRECATED (kept for traceability) |
 | **v0.2** | 2026-05-17 | **Re-baseline of the live system. ID convention switched to `FR-{FEAT}-NNN` + matching test IDs.** | REVIEW_READY |
 | v0.2.1  | 2026-05-23 | FR-LAND-002 updated: Featured carousel now cycles through every published cohort startup (16) instead of the top-4 slice, so every founder gets stage time on the home page. US-LAND-02, UC-LAND-01 wording aligned. Covered by `TEST-FR-LAND-002-C` (dot count + prev/next controls). No other section impacted. | UPDATED |
+| v0.2.2  | 2026-05-23 | **FR-AUTH-007 added**: `/auth/github` now redirects with an empty `scope=` so the OAuth consent screen never asks for repo or private-profile access — the demo only needs the public login. `SCOPE = ''` in `server/index.js`. Side effect: PickRepo now lists only the user's public repos (acceptable; the cohort demo does not depend on private-repo enumeration). Covered by `TEST-FR-AUTH-007-S`. | UPDATED |

@@ -98,6 +98,23 @@ describe('TEST-FR-AUTH-005-S — /auth/github placeholder rejection', () => {
   });
 });
 
+describe('TEST-FR-AUTH-007-S — /auth/github requests no GitHub scopes', () => {
+  it('emits an empty scope= so the OAuth consent screen never asks for repo / private-profile access', async () => {
+    // Plain authentication only — the demo does not need to read code,
+    // private repos, or anything else GitHub would warn the user about.
+    // The redirect URL must carry scope= with no value (or no scope key at all).
+    const r = await fetch(base + '/auth/github', { redirect: 'manual' });
+    const loc = r.headers.get('location') ?? '';
+    assert.ok(loc.startsWith('https://github.com/login/oauth/authorize'), `bad redirect: ${loc}`);
+
+    const u = new URL(loc);
+    const scope = u.searchParams.get('scope') ?? '';
+    assert.equal(scope, '', `scope must be empty, got "${scope}"`);
+    assert.ok(!/\brepo\b/.test(scope), `scope must never contain "repo", got "${scope}"`);
+    assert.ok(!/read:user/.test(scope), `scope must never contain "read:user", got "${scope}"`);
+  });
+});
+
 describe('TEST-FR-UPVOTE-001..004-S — /api/upvote contract', () => {
   it('rejects requests without a bearer token', async () => {
     const r = await jsonReq('/api/upvote', { method: 'POST', body: JSON.stringify({ startupId: 'S-artrise' }) });
