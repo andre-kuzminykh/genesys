@@ -82,6 +82,10 @@ export function seedState(): AppState {
     { handle: 'andreykuzminykh-hub', name: 'Andrey Kuzminykh', role: 'founder', avatarSeed: 'andreykuzminykh-hub' },
     { handle: 'andre-dataistos', name: 'Andre Dataistos', role: 'founder', avatarSeed: 'andre-dataistos' },
     { handle: 'ruguosob',         name: 'Ruguosob',         role: 'founder', avatarSeed: 'ruguosob' },
+    { handle: 'tm-a-t',           name: 'tm-a-t',           role: 'founder', avatarSeed: 'tm-a-t' },
+    { handle: 'imartemy1524',     name: 'imartemy1524',     role: 'founder', avatarSeed: 'imartemy1524' },
+    { handle: 'yuumiya',          name: 'Yuumiya',          role: 'founder', avatarSeed: 'yuumiya' },
+    { handle: 'vobolgus',         name: 'vobolgus',         role: 'founder', avatarSeed: 'vobolgus' },
   ];
 
   const batch = {
@@ -96,6 +100,10 @@ export function seedState(): AppState {
       'andreykuzminykh-hub',
       'andre-dataistos',
       'ruguosob',
+      'tm-a-t',
+      'imartemy1524',
+      'yuumiya',
+      'vobolgus',
     ],
     creditsPerInvestor: 100000,
     selfInvestPolicy: 'FORBIDDEN' as const,

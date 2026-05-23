@@ -15,10 +15,10 @@ function LocationStub() {
 
 function renderApp(handle: string) {
   // Seed a session for the given handle.
-  const stored = JSON.parse(localStorage.getItem('genesys:v0.11') ?? '{}');
+  const stored = JSON.parse(localStorage.getItem('genesys:v0.12') ?? '{}');
   stored.session = { handle, loggedInAt: Date.now() };
   // we may need to load seed via AppStore first; fall back to forcing the key
-  localStorage.setItem('genesys:v0.11', JSON.stringify(stored));
+  localStorage.setItem('genesys:v0.12', JSON.stringify(stored));
 
   return render(
     <ThemeProvider>
