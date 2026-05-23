@@ -86,6 +86,7 @@ export function seedState(): AppState {
     { handle: 'imartemy1524',     name: 'imartemy1524',     role: 'founder', avatarSeed: 'imartemy1524' },
     { handle: 'yuumiya',          name: 'Yuumiya',          role: 'founder', avatarSeed: 'yuumiya' },
     { handle: 'vobolgus',         name: 'vobolgus',         role: 'founder', avatarSeed: 'vobolgus' },
+    { handle: 'ldpix',            name: 'LDPix',            role: 'founder', avatarSeed: 'ldpix' },
   ];
 
   const batch = {
@@ -104,6 +105,7 @@ export function seedState(): AppState {
       'imartemy1524',
       'yuumiya',
       'vobolgus',
+      'ldpix',
     ],
     creditsPerInvestor: 100000,
     selfInvestPolicy: 'FORBIDDEN' as const,

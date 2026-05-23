@@ -45,6 +45,7 @@ const ALLOWLIST = new Set([
   'imartemy1524',
   'yuumiya',
   'vobolgus',
+  'ldpix',
 ].map((h) => h.toLowerCase()));
 
 // Map of startup -> owner handle, used to enforce the no-self-invest rule.

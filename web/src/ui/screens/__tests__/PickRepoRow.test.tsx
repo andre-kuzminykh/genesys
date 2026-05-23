@@ -14,9 +14,9 @@ function renderPickRepo(handle: string) {
       </AppStoreProvider>
     </ThemeProvider>,
   ).unmount();
-  const stored = JSON.parse(localStorage.getItem('genesys:v0.12') ?? '{}');
+  const stored = JSON.parse(localStorage.getItem('genesys:v0.13') ?? '{}');
   stored.session = { handle, loggedInAt: Date.now() };
-  localStorage.setItem('genesys:v0.12', JSON.stringify(stored));
+  localStorage.setItem('genesys:v0.13', JSON.stringify(stored));
 
   return render(
     <ThemeProvider>
