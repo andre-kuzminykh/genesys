@@ -6,6 +6,7 @@
  *   node scripts/seed-demo-data.js                 # writes ./data/*.json
  *   node scripts/seed-demo-data.js --out-dir=/opt/genesis/data
  *   node scripts/seed-demo-data.js --seed=picnic   # different-but-stable numbers
+ *   node scripts/seed-demo-data.js --demote=S-p2pedit,S-arb   # push these down the board
  *
  * Output is deterministic for a given --seed, so re-running reproduces the
  * exact same board. Respects the same invariants the live API enforces:
@@ -154,6 +155,21 @@ function shuffled(rng, arr) {
   return a;
 }
 
+/** Share of its normal traction a demoted startup keeps. */
+const DEMOTE_RETENTION = 0.45;
+
+/**
+ * Shuffle the candidate list, dropping demoted startups from most members'
+ * consideration. They keep roughly DEMOTE_RETENTION of their normal pull, so
+ * they settle near the bottom of the board with real-but-small numbers rather
+ * than a flat zero that reads as a bug on a screenshot.
+ */
+function shuffledWithDemotions(rng, startups, demoted) {
+  if (demoted.size === 0) return shuffled(rng, startups);
+  const kept = startups.filter((s) => !demoted.has(s.id) || rng() < DEMOTE_RETENTION);
+  return shuffled(rng, kept);
+}
+
 // ---------- generators ----------
 
 function months() {
@@ -165,7 +181,7 @@ function months() {
   return out;
 }
 
-function buildUpvotes(rng) {
+function buildUpvotes(rng, demoted) {
   const upvotes = {};
   for (const s of STARTUPS) upvotes[s.id] = [];
 
@@ -173,14 +189,14 @@ function buildUpvotes(rng) {
     // Every member backs 4-9 projects, never their own.
     const candidates = STARTUPS.filter((s) => s.owner !== handle);
     const howMany = intBetween(rng, 4, 9);
-    for (const s of shuffled(rng, candidates).slice(0, howMany)) {
+    for (const s of shuffledWithDemotions(rng, candidates, demoted).slice(0, howMany)) {
       upvotes[s.id].push(handle);
     }
   }
   return upvotes;
 }
 
-function buildInvestments(rng, startTs) {
+function buildInvestments(rng, startTs, demoted) {
   const investments = [];
   const spent = Object.fromEntries(COHORT.map((h) => [h, 0]));
   // Most of the cohort invests; a few sit it out, which reads as realistic.
@@ -189,7 +205,7 @@ function buildInvestments(rng, startTs) {
   for (const handle of active) {
     const isAdmin = ADMINS.has(handle);
     const candidates = STARTUPS.filter((s) => isAdmin || s.owner !== handle);
-    const picks = shuffled(rng, candidates).slice(0, intBetween(rng, 2, 5));
+    const picks = shuffledWithDemotions(rng, candidates, demoted).slice(0, intBetween(rng, 2, 5));
     // Deploy 35-95% of the wallet across the picks.
     let budget = Math.floor(CREDITS_PER_INVESTOR * between(rng, 0.35, 0.95));
 
@@ -216,6 +232,30 @@ function buildInvestments(rng, startTs) {
       });
       if (budget < 500) break;
     }
+  }
+
+  // Nobody should show a flat $0 raised — on a screenshot that reads as a
+  // broken row rather than an unpopular startup. Top every empty startup up
+  // with one modest cheque from whoever still has headroom.
+  for (const s of STARTUPS) {
+    if (investments.some((i) => i.startupId === s.id)) continue;
+    const eligible = shuffled(rng, COHORT).filter(
+      (h) => (ADMINS.has(h) || s.owner !== h) && CREDITS_PER_INVESTOR - spent[h] >= 2000,
+    );
+    if (eligible.length === 0) continue;
+    const handle = eligible[0];
+    const headroom = CREDITS_PER_INVESTOR - spent[handle];
+    const amount = Math.min(
+      Math.max(2000, Math.round(between(rng, 2000, 12000) / 500) * 500),
+      Math.floor(headroom / 500) * 500,
+    );
+    spent[handle] += amount;
+    investments.push({
+      startupId: s.id,
+      investorHandle: handle,
+      amount,
+      ts: startTs + intBetween(rng, 0, 9 * 86400000),
+    });
   }
 
   investments.sort((a, b) => a.ts - b.ts);
@@ -324,7 +364,7 @@ function buildForecast(rng, ms, upvotes) {
 // ---------- main ----------
 
 function parseArgs(argv) {
-  const out = { outDir: './data', seed: 'genesys-demo-001', state: null, forecast: null };
+  const out = { outDir: './data', seed: 'genesys-demo-001', state: null, forecast: null, demote: [] };
   for (const a of argv.slice(2)) {
     const m = a.match(/^--([a-z-]+)=(.*)$/);
     if (!m) continue;
@@ -332,6 +372,7 @@ function parseArgs(argv) {
     if (m[1] === 'seed') out.seed = m[2];
     if (m[1] === 'state') out.state = m[2];
     if (m[1] === 'forecast') out.forecast = m[2];
+    if (m[1] === 'demote') out.demote = m[2].split(',').map((x) => x.trim()).filter(Boolean);
   }
   return out;
 }
@@ -343,9 +384,17 @@ async function main() {
   const statePath = args.state ?? path.join(args.outDir, 'state.json');
   const forecastPath = args.forecast ?? path.join(args.outDir, 'forecast.json');
 
+  const demoted = new Set(args.demote);
+  for (const id of demoted) {
+    if (!STARTUPS.some((s) => s.id === id)) {
+      console.error(`seed-demo-data: unknown startup id in --demote: ${id}`);
+      process.exit(1);
+    }
+  }
+
   const ms = months();
-  const upvotes = buildUpvotes(rng);
-  const investments = buildInvestments(rng, Date.now() - 12 * 86400000);
+  const upvotes = buildUpvotes(rng, demoted);
+  const investments = buildInvestments(rng, Date.now() - 12 * 86400000, demoted);
   const forecast = buildForecast(rng, ms, upvotes);
 
   await mkdir(path.dirname(statePath), { recursive: true });
@@ -359,6 +408,7 @@ async function main() {
 
   console.log('');
   console.log(`seed             ${args.seed}`);
+  console.log(`demoted          ${demoted.size ? [...demoted].join(', ') : '(none)'}`);
   console.log(`state.json       ${statePath}`);
   console.log(`forecast.json    ${forecastPath}`);
   console.log('');
