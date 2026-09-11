@@ -1,0 +1,13 @@
+{
+  "name": "genesys-auth",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test state.test.js game.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}

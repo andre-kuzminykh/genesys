@@ -1,0 +1,45 @@
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        VITE_OPENAI_API_KEY: "${VITE_OPENAI_API_KEY:-}"
+        VITE_OPENAI_MODEL:   "${VITE_OPENAI_MODEL:-gpt-4o}"
+    image: genesys-startup-studio:latest
+    container_name: genesys-web
+    restart: unless-stopped
+    depends_on:
+      - auth
+    ports:
+      - "${GENESIS_PORT:-8026}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  auth:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: genesys-auth:latest
+    container_name: genesys-auth
+    restart: unless-stopped
+    environment:
+      GITHUB_CLIENT_ID:     "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      PUBLIC_URL:           "${PUBLIC_URL:-http://34.62.139.101:8026}"
+      STATE_FILE:           "/data/state.json"
+      # Server-side OpenAI key — used by /api/llm/responses to proxy the
+      # Responses (web_search) endpoint that doesn't expose CORS. Falls
+      # back to VITE_OPENAI_API_KEY if you've already set that one.
+      OPENAI_API_KEY:       "${OPENAI_API_KEY:-${VITE_OPENAI_API_KEY:-}}"
+      OPENAI_MODEL:         "${OPENAI_MODEL:-${VITE_OPENAI_MODEL:-gpt-4o}}"
+      PORT: "3000"
+    expose:
+      - "3000"
+    volumes:
+      # Persist shared upvotes + investments across container rebuilds.
+      - ./data:/data

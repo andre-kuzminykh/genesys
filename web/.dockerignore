@@ -1,0 +1,25 @@
+node_modules
+dist
+.vite
+coverage
+
+# repo / editor noise
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# tests artifacts we don't need in image
+**/*.log

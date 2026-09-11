@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root, html[data-theme="dark"] {
+    --c-base:          6   9  19;
+    --c-surface:      18  22  36;
+    --c-surfaceLight: 34  40  58;
+    --c-textsec:      160 167 195;
+    --c-text:         255 255 255;
+  }
+  html[data-theme="light"] {
+    --c-base:         248 250 252;
+    --c-surface:      255 255 255;
+    --c-surfaceLight: 226 232 240;
+    --c-textsec:      100 116 139;
+    --c-text:         11 13 20;
+  }
+
+  html, body, #root { height: 100%; }
+  body {
+    background: rgb(var(--c-base));
+    color: rgb(var(--c-text));
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Theme-aware override for utility text colors that don't auto-flip */
+  html[data-theme="light"] .text-white { color: rgb(var(--c-text)); }
+
+  /* Soften the bento drop shadow in light mode (the dark heavy one looks wrong on white) */
+  html[data-theme="light"] .bento {
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px -12px rgba(15, 23, 42, 0.10);
+  }
+  html[data-theme="light"] .glow-yellow {
+    box-shadow: 0 0 0 1px rgba(127,255,0,0.45), 0 0 24px rgba(127,255,0,0.18);
+  }
+
+  ::selection {
+    background: #7FFF00;
+    color: #0B0D14;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: rgb(var(--c-base)); }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--c-surfaceLight));
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-textsec)); }
+}
+
+/* Restore font-size semantics for `text-base` (Tailwind's default 1rem).
+   Adding colors.base in tailwind.config promoted text-base to "color: var(--c-base)",
+   which broke every `text-base` usage that meant font-size 1rem (text became
+   the page bg colour, i.e. near-invisible). For intentional dark-text use the
+   stable `text-ink` token instead. */
+@layer utilities {
+  .text-base {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+    color: inherit !important;
+  }
+}
+
+@layer components {
+  .bento {
+    @apply relative rounded-[32px] border border-surfaceLight bg-surface shadow-bento;
+  }
+  .bento-inset {
+    @apply rounded-2xl border border-surfaceLight bg-base;
+  }
+  .glow-yellow { box-shadow: 0 0 0 1px rgba(127,255,0,0.35), 0 0 30px rgba(127,255,0,0.20); }
+  .glow-sky    { box-shadow: 0 0 0 1px rgba(130,160,255,0.35), 0 0 30px rgba(130,160,255,0.20); }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+  }
+
+  .neon-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-all duration-300
+      bg-neon-500 hover:bg-neon-400 active:bg-neon-600 hover:shadow-neon;
+  }
+  .ghost-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold transition-all duration-300
+      border border-surfaceLight bg-transparent hover:bg-surfaceLight;
+    color: rgb(var(--c-text));
+  }
+  .sky-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-ink transition-all duration-300
+      bg-softblue hover:bg-sky-500 hover:shadow-sky;
+  }
+  .soft-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-softblue transition-all duration-300
+      bg-surfaceLight/50 hover:bg-surfaceLight;
+  }
+  .danger-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-white transition-all duration-300
+      bg-danger/80 hover:bg-danger;
+  }
+
+  /* Pill chips */
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border;
+  }
+  .chip-yellow { @apply text-neon-500 border-neon-500/30 bg-neon-500/10; }
+  .chip-yellow-solid { @apply text-ink border-neon-500/0 bg-neon-500; }
+  .chip-sky    { @apply text-softblue border-softblue/30 bg-softblue/10; }
+  .chip-green  { @apply text-signal-green border-signal-green/30 bg-signal-green/10; }
+  .chip-red    { @apply text-danger border-danger/30 bg-danger/10; }
+  .chip-amber  { @apply text-signal-amber border-signal-amber/30 bg-signal-amber/10; }
+  .chip-violet { @apply text-signal-violet border-signal-violet/30 bg-signal-violet/10; }
+  .chip-neutral{ @apply text-textsec border-surfaceLight bg-base; }
+
+  .display-mono { @apply font-mono text-[11px] tracking-widest text-textsec uppercase; }
+  .label { @apply text-xs uppercase tracking-[0.18em] text-textsec; }
+}
