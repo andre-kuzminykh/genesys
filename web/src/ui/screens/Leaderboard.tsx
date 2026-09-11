@@ -121,6 +121,29 @@ export function Leaderboard() {
     if (!ok) setForecast(null);
   }, [forecast, startups]);
 
+  // Hydrate from the last server-side run when this browser has never run one.
+  // The endpoint 404s until somebody posts a simulation, which is the normal
+  // cold-start case — a miss just leaves the screen in its empty state.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    if (loadCached()) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const r = await fetch('/api/forecast', { headers: { Accept: 'application/json' } });
+        if (!r.ok || !alive) return;
+        const remote = (await r.json()) as SimulationResult;
+        if (!alive || !Array.isArray(remote?.startups) || remote.startups.length === 0) return;
+        saveCached(remote);
+        setForecast(remote);
+        setRevealIndex(remote.months.length);
+      } catch { /* offline or no backend — empty state is correct */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   async function run() {
     setBusy(true);
     setAdapterErr(null);
